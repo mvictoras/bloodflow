@@ -44,13 +44,6 @@
 //#include "nearestTwoNeighborLattices3D.h"
 //#include "senseiConfig.h"
 //#ifdef ENABLE_SENSEI
-#include <vtkVersion.h>
-#include <vtkImageData.h>
-#include <vtkXMLImageDataWriter.h>
-#include <vtkPointData.h>
-#include <vtkDoubleArray.h>
-#include <vtkSmartPointer.h>
-#include <vtkUniformGrid.h> 
 #include "Bridge.h"
 //#endif
 
@@ -283,90 +276,6 @@ void writeVTK(MultiBlockLattice3D<T,DESCRIPTOR>& lattice,
 }
 //**************************************
 
-void VtkPalabos(MultiBlockLattice3D<T, DESCRIPTOR>& lattice,
-    IncomprFlowParam<T> const& parameters,  plint iter)
-{
-
-	MultiTensorField3D<double, 3> velocityArray=*computeVelocity(lattice);
- 	MultiTensorField3D<double, 3> VorticityArray=*computeVorticity(*computeVelocity(lattice));
-	MultiScalarField3D<double> VelocityNormArray=*computeVelocityNorm(lattice);
-
- 	pcout << VelocityNormArray << endl; 
-	int  nx = parameters.getNx();  
-	int  ny = parameters.getNy();  
-	int  nz = parameters.getNz();
-  
-	vtkSmartPointer<vtkImageData> imageData =
-        	vtkSmartPointer<vtkImageData>::New();
-
-	imageData->SetDimensions(nx, ny, nz);
-
-	//vtkSmartPointer<vtkDoubleArray> VelocityValues =
-        //	vtkSmartPointer<vtkDoubleArray>::New();
-	
-	vtkDoubleArray *VelocityValues = vtkDoubleArray::New(); 	 
-	
-	VelocityValues->SetNumberOfComponents(3);
-	VelocityValues->SetNumberOfTuples(nx * ny * nz); 
-
-	//vtkSmartPointer<vtkDoubleArray> VorticityValues =
-          //      vtkSmartPointer<vtkDoubleArray>::New();
-      
-	vtkDoubleArray *VorticityValues = vtkDoubleArray::New();
-        
-	VorticityValues->SetNumberOfComponents(3);
-        VorticityValues->SetNumberOfTuples(nx * ny * nz);
-
-//	vtkSmartPointer<vtkDoubleArray> VelocityNormValues =
-  //              vtkSmartPointer<vtkDoubleArray>::New();
-
-	vtkDoubleArray *VelocityNormValues = vtkDoubleArray::New();
-	
-        VelocityNormValues->SetNumberOfComponents(1);
-        VelocityNormValues->SetNumberOfTuples(nx * ny * nz);
- 
-	for (int i=0; i<nz; i++)  
-	{
- 		for (int j=0; j<ny; j++)
-        	{
-                	for (int k=0; k<nx; k++) 
-                	{	
-			Array<double,3> vel = velocityArray.get(k,j,i); 
-			Array<double,3> vor = VorticityArray.get(k,j,i); 
-			double norm = VelocityNormArray.get(k,j,i);
-  
-			int index = j * nx + k + i * nx * ny; 
-   
-			VelocityValues->SetTuple3(index,vel[0],vel[1],vel[2]);
-			VorticityValues->SetTuple3(index,vor[0],vor[1],vor[2]);
-			VelocityNormValues->SetTuple1(index,norm);	  
-			}
-		}
-	}
-
-
-	imageData->GetPointData()->AddArray(VelocityValues);
-		VelocityValues->SetName("Velocity");
-
-	imageData->GetPointData()->AddArray(VorticityValues);
-                VorticityValues->SetName("Vorticity");
-
-	
-        imageData->GetPointData()->AddArray(VelocityNormValues); // ass these lines to add Array pb_vel
-                VelocityNormValues->SetName("Velocity Norm");
-
-//	vtkSmartPointer<vtkXMLImageDataWriter> writer =
-//		vtkSmartPointer<vtkXMLImageDataWriter>::New();
-
-//	char filename[64];
-//      sprintf (filename, "VtkDataStruc%d.vti", iter);
-
-//	writer->SetInputData(imageData);
-//	writer->SetFileName(filename);
-//	writer->Write();
-}
-
-
 int main(int argc, char* argv[]) {
 
     plbInit(&argc, &argv);
@@ -389,8 +298,7 @@ int main(int argc, char* argv[]) {
     const int ny = 30;
     const int nz = 80;
     //using namespace opts;
-    std::string config_file("/home/jifutan/insituBloodFlow/BloodFlow/examples/singleCell/cellFlow.xml");//Configuration file to tell SENSEI what to do with data.
-    Bridge::Initialize(global::mpi().getGlobalCommunicator(), config_file);
+    Bridge::getInstance().Initialize(global::mpi().getGlobalCommunicator());
     /*Options ops(argc, argv);
     ops
     #ifdef ENABLE_SENSEI
@@ -495,6 +403,7 @@ int main(int argc, char* argv[]) {
    int nanglelist;
    int nghost;
    double **x;
+   double **v;
    
    int **anglelist;
 
@@ -516,6 +425,7 @@ int main(int argc, char* argv[]) {
         nanglelist = wrapper.lmp->neighbor->nanglelist;
         nghost = wrapper.lmp->atom->nghost;
         x = wrapper.lmp->atom->x;
+        v = wrapper.lmp->atom->v;
         anglelist = wrapper.lmp->neighbor->anglelist;
         
 
@@ -524,8 +434,8 @@ int main(int argc, char* argv[]) {
         vort = *computeVorticity(vel);
         velNorm = *computeVelocityNorm(lattice,lattice.getBoundingBox());
 
-	TensorField3D<T,3> velocityArray = vel.getComponent(myrank);
-   	TensorField3D<T,3> vorticityArray = vort.getComponent(myrank);
+	    TensorField3D<T,3> velocityArray = vel.getComponent(myrank);
+   	    TensorField3D<T,3> vorticityArray = vort.getComponent(myrank);
       	ScalarField3D<T> velocityNormArray = velNorm.getComponent(myrank);
       
         Box3D domain = Box3D(localdomain[myrank][0]-envelopeWidth,localdomain[myrank][1]+envelopeWidth,localdomain[myrank][2]-envelopeWidth,localdomain[myrank][3]+envelopeWidth,localdomain[myrank][4]-envelopeWidth,localdomain[myrank][5]+envelopeWidth);
@@ -535,10 +445,12 @@ int main(int argc, char* argv[]) {
         //cout<<"Rank: " << myrank <<" Velocity Extents: " <<velocityArray.getNx() << " " << velocityArray.getNy() << " " << velocityArray.getNz()<<endl;
         //cout<<"Rank: " << myrank <<" Velocity Norm Extents: " <<velocityNormArray.getNx() << " " << velocityNormArray.getNy() << " " << velocityNormArray.getNz()<<endl;
         if (iT%iSave ==0 && iT >0){
-        Bridge::SetData(x, ntimestep, nghost ,nlocal, anglelist, nanglelist,
-			            velocityArray, vorticityArray, velocityNormArray, 
-                        nx, ny, nz, domain, envelopeWidth);
-        Bridge::Analyze(time++);
+        
+            Bridge::getInstance().Publish(x, v, ntimestep, nghost ,nlocal, anglelist, nanglelist,
+                            velocityArray, vorticityArray, velocityNormArray, 
+                            nx, ny, nz, domain, envelopeWidth);
+                            
+            Bridge::getInstance().Execute(time++);
         }
 
         // Clear and spread fluid force
@@ -559,5 +471,5 @@ int main(int argc, char* argv[]) {
     timeduration = global::timer("mainloop").stop();
     pcout<<"total execution time "<<timeduration<<endl;
     delete boundaryCondition;
-    Bridge::Finalize();
+    Bridge::getInstance().Finalize();
 }

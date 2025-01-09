@@ -6,8 +6,6 @@
 #include "modify.h"
 #include "fix.h"
 #include "fix_fcm.h"
-#include "fix_activate_platelet.h"
-#include "fix_rls.h"
 #include "update.h"
 
 namespace plb {
@@ -499,11 +497,11 @@ namespace plb {
         for (i=0;i<nfix;i++)
           if (strcmp(wrapper.lmp->modify->fix[i]->style,"activate/platelet")==0) ifix=i;
           
-        f_fcm = static_cast<LAMMPS_NS::FixRLS *>(wrapper.lmp->modify->fix[ifix]);
+        f_fcm = static_cast<LAMMPS_NS::FixFCM *>(wrapper.lmp->modify->fix[ifix]);
         f_fcm->grow_arrays(wrapper.lmp->atom->nmax);
         f_fcm->init();
         //rate = f_fcm->releaseRate();
-        rate = f_fcm->rate;
+        //rate = f_fcm->rate;
         groupbit = f_fcm->groupbit;//new code
       }
       virtual void process(Box3D domain, BlockLattice3D<T,Descriptor> &lattice){
@@ -594,7 +592,7 @@ namespace plb {
       }
     private:
       LammpsWrapper &wrapper;
-      class LAMMPS_NS::FixRLS *f_fcm;
+      class LAMMPS_NS::FixFCM *f_fcm;
       plint groupbit;
       T rate;
   };
@@ -617,12 +615,12 @@ namespace plb {
         for (i=0;i<nfix;i++)
           if (strcmp(wrapper.lmp->modify->fix[i]->style,"activate/platelet")==0) ifix=i;
         if (ifix==0) pcout<<"Error, activate/platelet is needed for the simulation! "<<std::endl;  
-        f_fcm = static_cast<LAMMPS_NS::FixActivatePlatelet *>(wrapper.lmp->modify->fix[ifix]);
-        f_fcm->grow_arrays(wrapper.lmp->atom->nmax);
-        f_fcm->init();
+        //f_fcm = static_cast<LAMMPS_NS::FixActivatePlatelet *>(wrapper.lmp->modify->fix[ifix]);
+        //f_fcm->grow_arrays(wrapper.lmp->atom->nmax);
+        //f_fcm->init();
         //rate = f_fcm->releaseRate();
         //rate = f_fcm->rate; //add more constants, release rate, decay rate, see Diamond 2012 blood. 5/23/2019
-        groupbit = f_fcm->groupbit;//new code
+        //groupbit = f_fcm->groupbit;//new code
         dt = wrapper.lmp->update->dt;
       }
       virtual void process(Box3D domain, BlockLattice3D<T,Descriptor> &lattice){
@@ -726,7 +724,7 @@ namespace plb {
       }
     private:
       LammpsWrapper &wrapper;
-      class LAMMPS_NS::FixActivatePlatelet *f_fcm;
+      //class LAMMPS_NS::FixActivatePlatelet *f_fcm;
       plint groupbit;
       T rate, dt;
   };

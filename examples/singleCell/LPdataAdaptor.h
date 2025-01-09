@@ -1,10 +1,8 @@
 #pragma once
 #include "palabos3D.h"
 #include "palabos3D.hh"
-#include <DataAdaptor.h>
-#include <vtkDoubleArray.h>
-#include <vtkIntArray.h>
-#include <vtkImageData.h>
+
+
 using namespace plb; 
 namespace senseiLP 
 {

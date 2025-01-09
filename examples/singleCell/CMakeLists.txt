@@ -1,29 +1,11 @@
-if(CI)
-###############################################################################
-    get_filename_component(EXECUTABLE_NAME ${CMAKE_CURRENT_SOURCE_DIR} NAME)
-    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-###############################################################################
-#get_filename_component(PROJECT_NAME ${CMAKE_CURRENT_SOURCE_DIR} NAME)
-    get_filename_component(PROJECT_NAME ${EXECUTABLE_NAME} NAME)
-    add_executable(${PROJECT_NAME} "./${EXECUTABLE_NAME}.cpp")
-# Link with the following libraries
-    target_link_libraries(${PROJECT_NAME} palabos)
-if(ENABLE_MPI)
-    target_link_libraries(${PROJECT_NAME} ${MPI_CXX_LIBRARIES})
-endif()
-###############################################################################
-# This returns when you compile Palabos and all the examples (root CMakeLists.txt)
-return()
-###############################################################################
-endif()
 cmake_minimum_required(VERSION 2.8.12)
 project(palabosExample)
 enable_language(CXX)
 
 #find_package(SENSEI REQUIRED)
-find_package(SENSEI)
-if(SENSEI_FOUND)
-  message("FOUND SENSEI")
+find_package(Ascent REQUIRED)
+if(${ASCENT_FOUND})
+  message("FOUND ASCENT")
 endif()
 
 #set(PALABOS_ROOT "$ENV{HOME}/insituBloodFlow/src/palabos" CACHE PATH "Path to PALABOS root directory")
@@ -37,7 +19,6 @@ FIND_PATH(COUPLING_DIR palabos-lammps)
 set(LAMMPS_LIB "${LAMMPS_DIR}/src")
 #CONNOR:Change the following line to your executable name
 set(EXECUTABLE_NAME "cellFlow")
-set (CMAKE_RUNTIME_OUTPUT_DIRECTORY "../")
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release")
     #set(CMAKE_CONFIGURATION_TYPES "Debug;Release")
@@ -115,16 +96,33 @@ set_property(TARGET lammps PROPERTY
 ###############################################################################
 #  SENSEI 
 
-include_directories(${SENSEI_DIR}/include)
+include_directories(${ASCENT_INSTALL_PREFIX}/include/ascent ${CONDUIT_DIR}/include/conduit)
 set(SRC
    ${EXECUTABLE_NAME}.cpp
-   LPdataAdaptor.cpp
    Bridge.cpp
    ) 
 
 add_executable(${EXECUTABLE_NAME} ${SRC})
 # Link with the following libraries
-target_link_libraries(${EXECUTABLE_NAME} palabos lammps sensei)
+target_link_libraries(${EXECUTABLE_NAME} palabos lammps ascent::ascent_mpi)
 if(ENABLE_MPI)
     target_link_libraries(${EXECUTABLE_NAME} ${MPI_CXX_LIBRARIES})
 endif()
+
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/in.lmp4cell"
+    "${CMAKE_CURRENT_BINARY_DIR}/in.lmp4cell"
+    COPYONLY
+)
+
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/in.tencells"
+    "${CMAKE_CURRENT_BINARY_DIR}/in.tencells"
+    COPYONLY
+)
+
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/ascent_actions.yaml"
+    "${CMAKE_CURRENT_BINARY_DIR}/ascent_actions.yaml"
+    COPYONLY
+)
