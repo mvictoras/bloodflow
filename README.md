@@ -1,30 +1,90 @@
-# Using the BloodFlow Repository
+# BloodFlow Simulation
 
-Palabos + LAMMPS + SENSEI Integration for in-situ visualization is the goal for this repository.
-Dr. Jifu Tan had successfully coupled Palabos and LAMMPS to simulate the flow of blood cells within plasma. 
-BloodFlow has several directories and text files, each with a specific purpose. These are listed below
+**BloodFlow** is a C++ simulation project that models blood flow dynamics at the single-cell level. It leverages the power of **Palabos** for lattice Boltzmann simulations, **LAMMPS** for molecular dynamics, and **Ascent** for advanced visualization. This project integrates these tools to provide a comprehensive framework for simulating and analyzing blood flow in biological systems.
 
-1. PALABOS.md : This text file includes lines of code within embolism.cpp that are of interest.
-It attempts to explain code developed by Palabos that someone new to the software may not understand, even when being proficient in c++.
+## Features
 
-1. [Embolism Example](examples/embolism/README.md) lists instructions on how to build LAMMPS and Palabos as well as running the embolism example. NOTE: This example doesn't include integration of SENSEI
+- **Palabos Integration**: Utilizes Palabos for high-performance lattice Boltzmann simulations of incompressible fluid flows.
+- **LAMMPS Coupling**: Integrates LAMMPS for molecular dynamics, enabling detailed modeling of cellular interactions and forces.
+- **Ascent Visualization**: Employs Ascent for real-time visualization and analysis of simulation data, facilitating intuitive understanding of blood flow dynamics.
+- **MPI Support**: Supports parallel computing using MPI to leverage multi-core and distributed computing environments.
+- **Customizable Parameters**: Offers flexible configuration options to tailor simulations to specific research needs.
 
-2. SENSEI.md : Instructions on how to build SENSEI on Cooley and how to run an example called oscillator\
-   [SenseiPersonal.md](SenseiPersonal.md) gives documentation on building SENSEI on one's personal computer. This is required to run the singleCells example with SENSEI.
+## Prerequisites
 
-3. [Follow this link](examples/singleCell/singleCellPersonal.md) for instructions on how to run the singleCell simulation on a personal computer. NOTE: Going through the embolism example will help with building LAMMPS and Palabos, both of which are needed for this example
+Before building and running the BloodFlow simulation, ensure that the following dependencies are installed on your system:
 
+- **CMake**: Version 3.18 or higher
+- **C++ Compiler**: Supporting C++11 standard (e.g., GCC, Clang, MSVC)
+- **MPI**: For parallel execution (e.g., OpenMPI, MPICH)
+- **Ascent**: For visualization (optional but recommended)
+- **Git**: For cloning the repository and fetching dependencies
 
-4. examples (directory) : Several examples exist here to begin getting familiar to running such code. 
+## Installation
 
+### Clone the Repository
 
-5. ibm (directory) : Newer users won't need to touch this directory until they need to dig deeper into understanding how LAMMPS and Palabos are coupled.
-All of the coupling code is located here. If the class for a called object in embolism.cpp can't be found in the palabos/src, it most likely is located here.
+Begin by cloning the BloodFlow repository from GitLab (replace `<repository_url>` with the actual URL if different):
 
-6. lmp2vtk (directory) : The example codes output a .xyz file for the particles. The code in here converts this file to .vtk, which can be visualized in Paraview. lmp2vtk.bash file has a list of commands to use that can easily convert .xyz to .vtk. 
+```bash
+git clone <repository_url> BloodFlow
+cd BloodFlow
+```
 
-7. rbc (directory) : Multiple files are stored in here that are needed for the example simulations. Instruction on what to do with them is located 
-in the README file for each example. NOTE: Training example uses the same files as singleCell.
+### Configure the Build
+BloodFlow uses CMake for build configuration. You can choose to let CMake automatically fetch and manage dependencies like Palabos and LAMMPS or use manually installed versions.
 
-8. sites (directory) : cooley.cmake is basically a bash file called when using the cmake command on Cooley (listed in embolism's README). 
-The paths listed in the file will need to be changed to reflect one's personnal paths. 
+#### Options
+
+- `FETCH_PALABOS` (ON by default): Download and manage Palabos via FetchContent.
+- `FETCH_LAMMPS` (ON by default): Download and manage LAMMPS via ExternalProject.
+- `BUILD_EXAMPLE_SINGLECELL` (ON by default): Build the SingleCell example.
+- `ENABLE_ASCENT` (ON by default): Enable Ascent for visualization.
+- `ENABLE_MPI` (ON by default): Enable MPI support.
+- `ENABLE_POSIX` (ON by default on non-Windows systems): Enable POSIX support.
+
+#### Example Configuration
+
+Create a build directory and configure the project with default options:
+```bash
+mkdir build
+cd build
+cmake -DAscent_DIR=/path/to/lib/cmake/ascent ..
+```
+
+**Custom Configuration**: To customize build options, use `-D` flags. For example, to disable fetching LAMMPS and Ascent:
+```bash
+cmake -DFETCH_LAMMPS=OFF -DENABLE_ASCENT=OFF ..
+```
+
+**Specifying Installed Dependencies**: If you have Palabos or LAMMPS installed manually, disable fetching and set their paths:
+```bash
+cmake -DFETCH_PALABOS=OFF -DPALABOS_ROOT=/path/to/palabos \
+      -DFETCH_LAMMPS=OFF -DLAMMPS_DIR=/path/to/lammps ..
+```
+
+#### Build the Project
+Once configured, build the project using `make` (or your preferred build system):
+```bash
+cmake --build . --parallel
+```
+This will compile the BloodFlow simulation along with its dependencies if fetching is enabled.
+
+### Running the Simulation
+After a successful build, navigate to the `examples/singleCell` directory and execute the simulation:
+```bash
+cd examples/singleCell
+mpirun -np <num_processes> ./singleCell <lammps_input_file> <maxT> <iSave>
+```
+
+#### Parameters:
+
+- `<lammps_input_file>`: Path to the LAMMPS input script.
+- `<maxT>`: Total number of simulation timesteps.
+- `<iSave>`: Interval for saving and publishing simulation data.
+
+#### Example:
+```bash
+mpirun -np 4 ./singleCell in.lmp4cell 10000 100
+```
+This command runs the simulation using 4 MPI processes, executes 10,000 timesteps, and saves data every 100 timesteps.

@@ -1,6 +1,0 @@
-set(PALABOS_ROOT "/Users/mvictoras/src/ascent-trame-proj/palabos/" CACHE STRING "")
-set(BLOODFLOW_ROOT "/Users/mvictoras/src/ascent-trame-proj/bloodflow" CACHE STRING "")
-set(LAMMPS_DIR "/Users/mvictoras/src/ascent-trame-proj/lammps/" CACHE STRING "")
-set(Ascent_DIR "Ascent_DIR=~/src/ascent-trame-proj/ascent/scripts/build_ascent/install/ascent-checkout/lib/cmake/ascent" CACHE STRING "")
-set(CMAKE_C_COMPILER "mpicc" CACHE STRING "Specify the compiler to use")
-set(CMAKE_CXX_STANDARD "11" CACHE STRING "Using c++11 version")

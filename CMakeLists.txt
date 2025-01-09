@@ -163,9 +163,8 @@ include_directories(palabos PUBLIC "${PALABOS_ROOT}/src")
 include_directories(palabos PUBLIC "${PALABOS_ROOT}/externalLibraries")
 include_directories(palabos PUBLIC "${PALABOS_ROOT}/externalLibraries/Eigen3")
 
-# IBM / RBC code
+# IBM code
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/ibm")
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/rbc")
 
 # LAMMPS
 include_directories("${LAMMPS_LIB}")
@@ -177,7 +176,7 @@ if(ENABLE_ASCENT)
       ${ASCENT_INSTALL_PREFIX}/include/ascent
       ${CONDUIT_DIR}/include/conduit
   )
-  add_definitions(-DASCENT_ENABLED)
+  add_definitions(-DENABLE_ASCENT)
 endif()
 
 ###

@@ -57,3 +57,7 @@ setup2.sh
 setup.sh
 examples/bidirectionalSingleCell/in.rbcmolecule
 examples/bidirectionalSingleCell/in.deposit
+
+.DS_Store
+.vscode
+

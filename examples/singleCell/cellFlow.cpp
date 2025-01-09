@@ -43,9 +43,9 @@
 #include "latticeDecomposition.h"
 //#include "nearestTwoNeighborLattices3D.h"
 //#include "senseiConfig.h"
-//#ifdef ENABLE_SENSEI
+#ifdef ENABLE_ASCENT
 #include "Bridge.h"
-//#endif
+#endif
 
 using namespace plb;
 using namespace std;
@@ -298,7 +298,9 @@ int main(int argc, char* argv[]) {
     const int ny = 30;
     const int nz = 80;
     //using namespace opts;
+    #ifdef ENABLE_ASCENT
     Bridge::getInstance().Initialize(global::mpi().getGlobalCommunicator());
+    #endif
     /*Options ops(argc, argv);
     ops
     #ifdef ENABLE_SENSEI
@@ -444,14 +446,14 @@ int main(int argc, char* argv[]) {
         //cout<<"Rank: " << myrank <<" Vorticity Extents: " <<vorticityArray.getNx() << " " << vorticityArray.getNy() << " " << vorticityArray.getNz()<<endl;
         //cout<<"Rank: " << myrank <<" Velocity Extents: " <<velocityArray.getNx() << " " << velocityArray.getNy() << " " << velocityArray.getNz()<<endl;
         //cout<<"Rank: " << myrank <<" Velocity Norm Extents: " <<velocityNormArray.getNx() << " " << velocityNormArray.getNy() << " " << velocityNormArray.getNz()<<endl;
+#ifdef ENABLE_ASCENT
         if (iT%iSave ==0 && iT >0){
-        
+
             Bridge::getInstance().Publish(x, v, ntimestep, nghost ,nlocal, anglelist, nanglelist,
                             velocityArray, vorticityArray, velocityNormArray, 
                             nx, ny, nz, domain, envelopeWidth);
-                            
-            Bridge::getInstance().Execute(time++);
         }
+#endif
 
         // Clear and spread fluid force
         setExternalVector(lattice,lattice.getBoundingBox(),DESCRIPTOR<T>::ExternalField::forceBeginsAt,force);
@@ -471,5 +473,7 @@ int main(int argc, char* argv[]) {
     timeduration = global::timer("mainloop").stop();
     pcout<<"total execution time "<<timeduration<<endl;
     delete boundaryCondition;
+#ifdef ENABLE_ASCENT
     Bridge::getInstance().Finalize();
+#endif
 }

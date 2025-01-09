@@ -5,12 +5,12 @@
       f1: 
         type: "vector_magnitude"
         params: 
-          field: "velocity"
+          field: "fluid_velocity"
           output_name: "fluid_vel_mag"
       f2: 
         type: "slice"
         params: 
-          topology: volume_topo
+          topology: fluid_topo
           point: 
             x: 15
             y: 0
@@ -26,7 +26,7 @@
       plots:
         p1:
           type: pseudocolor
-          field: velocity_magnitude
+          field: particle_velocity_magnitude
         p2:
           type: pseudocolor
           field: fluid_vel_mag
