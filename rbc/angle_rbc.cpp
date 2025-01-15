@@ -23,9 +23,12 @@
 #include "math_const.h"
 #include "memory.h"
 #include "error.h"
+#include "fix_deposit.h"
+#include "fix_deposit.cpp"
 #include "update.h"//debug only
 #include <vector>
 #include <set>
+#include <iostream>
 
 using namespace LAMMPS_NS;
 using namespace MathConst;
@@ -87,8 +90,8 @@ void AngleRbc::init_style()
   
   memory->create(At,nmolecule+1,"angle:At");
   memory->create(Vt,nmolecule+1,"angle:Vt");
-  memory->create(at,nmolecule+1,"angle:At");
-  memory->create(vt,nmolecule+1,"angle:Vt");
+  memory->create(at,nmolecule+1,"angle:at");
+  memory->create(vt,nmolecule+1,"angle:vt");
   memory->create(crossFlag,nmolecule+1,3,"angle:crossFlag");
   memory->create(MAXxyz,nmolecule+1,3,"angle:MAXxyz");
   memory->create(maxxyz,nmolecule+1,3,"angle:maxxyz");
@@ -130,7 +133,7 @@ void AngleRbc::computeAreaVol(double *At, double *Vt, int **crossFlag){
   int xperiodic = domain->xperiodic;
   int yperiodic = domain->yperiodic;
   int zperiodic = domain->zperiodic;
-  check_crossing(crossFlag);
+//   check_crossing(crossFlag);
   // each processor has nanglelist, see neighbor.cpp
   // calculate area and volume
   for (n = 0; n < nanglelist; n++) {
@@ -247,6 +250,10 @@ void AngleRbc::computeAreaVol(double *At, double *Vt){
     at[i] = 0.0;
     vt[i] = 0.0;
   }
+  // std::fill(At+1, At+nmolecule, 0.0);
+  // std::fill(Vt+1, Vt+nmolecule, 0.0);
+  // std::fill(at+1, at+nmolecule, 0.0);
+  // std::fill(vt+1, vt+nmolecule, 0.0); 
   int i1,i2,i3,n,type,molId;
   double delx1,dely1,delz1,delx2,dely2,delz2,delx3,dely3,delz3;
   double xi[3],cnt[3],xi2;
@@ -318,7 +325,7 @@ void AngleRbc::computeAreaVol(double *At, double *Vt){
     //At[molId] += area;
     at[molId] += area;
 
-    //new code
+    // //new code
     if (!zperiodic){
       a_xy = 0.5*xi[2];//area projection on xy plane
       //Vt[molId] += a_xy*(x[i1][2] + x[i2][2] + x[i3][2])/3.0;
@@ -392,12 +399,50 @@ void AngleRbc::compute(int eflag, int vflag)
   int newton_bond = force->newton_bond;
   tagint g1,g2,g3; //global id for atoms 
   int l1,l2,l3; //local id for atoms 
+  // int n;
   double x1[3],x2[3],x3[3];
   // each processor has nanglelist, see neighbor.cpp
   a0=0.0;
   //computeAreaVol(At,Vt,crossFlag);
+    // XXX
+  tagint max = 0;
+  tagint nmolecule_new = 0;
+  for (int i = 0; i < nlocal; i++){
+    max = MAX(max,molecule[i]); 
+    // std::cout << "molecule[i]: " << molecule[i] << std::endl;
+  }
+  // std::cout << "***** nmolecule: "<< nmolecule << " nmolecule_new: " << nmolecule_new << std::endl;
+  MPI_Allreduce(&max,&nmolecule_new,1,MPI_LMP_TAGINT,MPI_MAX,world);
+  // std::cout << "***** nmolecule "<< nmolecule << std::endl;
+  if (nmolecule_new > nmolecule)
+  {// check if grow will copy the value of the array
+    std::cout<< " ----- nmolecule: " << nmolecule << " nmolecule_new: "<< nmolecule_new <<std::endl;
+    double At_one = At[1]; // save a copy 
+    // std::cout<<"---------- after AT_one = At[1]"<<nmolecule<<std::endl;
+    double Vt_one = Vt[1];
+    // std::cout<<"---------- after Vt_one = Vt[1]"<<nmolecule<<std::endl;
+
+    nmolecule = nmolecule_new;
+    memory->grow(At,nmolecule+1,"angle:At");
+    memory->grow(Vt,nmolecule+1,"angle:Vt");
+    memory->grow(at,nmolecule+1,"angle:at");
+    memory->grow(vt,nmolecule+1,"angle:vt");
+    memory->grow(crossFlag,nmolecule+1,3,"angle:crossFlag");
+    memory->grow(MAXxyz,nmolecule+1,3,"angle:MAXxyz");
+    memory->grow(maxxyz,nmolecule+1,3,"angle:maxxyz");
+    memory->grow(MINxyz,nmolecule+1,3,"angle:MINxyz");
+    memory->grow(minxyz,nmolecule+1,3,"angle:minxyz");
+    for (int i=1;i<nmolecule+1;i++)
+    {
+      At[i]=At_one;
+      Vt[i]=Vt_one;
+    }
+  }
   //for (int i = 0; i < nlocal; i++) domain->unmap(x[i],image[i],x1);
+  
+ 
   computeAreaVol(At,Vt);
+  // std::cout << "++++ after computeAreaVol" << std::endl;
   check_crossing(crossFlag);
   /*if (comm->me == 0) {
     for (int j=1;j<nmolecule+1;j++)
@@ -405,6 +450,7 @@ void AngleRbc::compute(int eflag, int vflag)
   }*/
   bigint ntimestep;
   ntimestep = update->ntimestep;
+  std::cout << " nmolecule "<< nmolecule <<" nmolecule_new: "<< nmolecule_new << " timestep: " << ntimestep << std::endl;
   for (n = 0; n < nanglelist; n++) {
     i1 = anglelist[n][0];
     i2 = anglelist[n][1];
@@ -465,9 +511,10 @@ void AngleRbc::compute(int eflag, int vflag)
     cnt[0]=0.333333333*(x[i1][0] + x[i2][0] + x[i3][0]);
     cnt[1]=0.333333333*(x[i1][1] + x[i2][1] + x[i3][1]);
     cnt[2]=0.333333333*(x[i1][2] + x[i2][2] + x[i3][2]);
-
+    
+    // XXX  commented out on 06/06/2023
     if (xperiodic){ 
-        if ((crossFlag[molId][0]) && (cnt[0]<domain->xprd_half))
+        if ((crossFlag[molId][0]) && (cnt[0]<domain->xprd_half)) // crossFlag[molId][0]
             cnt[0] += domain->xprd;    
     }
     if (yperiodic){ 
@@ -478,6 +525,8 @@ void AngleRbc::compute(int eflag, int vflag)
         if ((crossFlag[molId][2]) && (cnt[2]<domain->zprd_half))
             cnt[2] += domain->zprd;    
     }
+
+
     /*if (comm->me==0){
         //printf("image %ld %ld %ld,i1-3: %d, %d, %d,  xunwrap %lg %lg %lg, x %lg %lg %lg\n",image[i1],image[i2],image[i3],i1,i2,i3,x1[0],x1[1],x1[2],x[i1][0],x[i1][1],x[i1][2]); 
         //printf("%d processor %d angle: dx1_unwrap: %lg %lg %lg, dx2_org: %lg %lg %lg\n",comm->me, n,delx1,dely1,delz1,x[i1][0] - x[i2][0],x[i1][1] - x[i2][1],x[i1][2] - x[i2][2]);
@@ -574,7 +623,8 @@ void AngleRbc::compute(int eflag, int vflag)
                          
      // } //if(i1<nlocal)
   } // nanglelist
-  //for (int i = 0; i < nlocal; i++) domain->remap(x[i],image[i]);
+  //for (int i = 0; i < nlocal; i++) domain->remap(x[i],image[i]);'
+  // std::cout << "im here " << i1 << " " << i2 << " " << i3  << std::endl;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -677,7 +727,8 @@ void AngleRbc::write_restart(FILE *fp)
 
 void AngleRbc::read_restart(FILE *fp)
 {
-  allocate();
+  // allocate();
+  if (!allocated) allocate();
 
   if (comm->me == 0) {
     fread(&Cq[1],sizeof(double),atom->nangletypes,fp);

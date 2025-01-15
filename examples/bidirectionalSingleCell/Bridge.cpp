@@ -85,9 +85,9 @@ void Bridge::Publish  (double **x, double **v, long ntimestep, int nghost,
 
   mesh["fields/fluid_vorticity/association"] = "vertex";
   mesh["fields/fluid_vorticity/topology"]    = "fluid_topo";
-  mesh["fields/fluid_vorticity/values/x"].set(velocity_x);
-  mesh["fields/fluid_vorticity/values/y"].set(velocity_y);
-  mesh["fields/fluid_vorticity/values/z"].set(velocity_z);
+  mesh["fields/fluid_vorticity/values/x"].set(vorticity_x);
+  mesh["fields/fluid_vorticity/values/y"].set(vorticity_y);
+  mesh["fields/fluid_vorticity/values/z"].set(vorticity_z);
 
   int nvals = nlocal+nghost;
   mesh["coordsets/particle_coords/type"] = "explicit";
