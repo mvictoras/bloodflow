@@ -45,7 +45,7 @@ comm_modify cutoff 10#  # XXX Was 5: Communication Distance, might need to be ch
 # use fix SRD to push small particles out from inside big ones
 
 molecule singleRBC rbc.molecule 
-region RBC_zone block 8 22 8 22 0 40 side in # Tishchenko 6.28.2023
+region RBC_zone block 8 22 8 22 0 80 side in # Tishchenko 6.28.2023
 
 timestep	100
 
@@ -54,7 +54,7 @@ fix 2 cells fcm 1
 #fix 3 wall move linear 0 0 0
 #fix 4 cells viscous 0.1
 #     nevery LBtype dynamic_vis rho 
-fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian 10 10 10 10 near 2 # vz 10 20 # Tishchenko 6.28.2023
+#fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian 10 10 10 1 near 2 # vz 10 20 # Tishchenko 6.28.2023
 #fix 2 cells lb/fluid 1 1 0.1667 1 dx 1 dm 1 printfluid 100 zwall_velocity 0 1e-5
 #fix 2 cells lbm 1 1 0.1667 1 dx 1 dm 1 printfluid 100 zwall_velocity 0 1e-5
 #fix 2 cells lbm 1 1 0.1667 1 dx 1 dm 1 printfluid 100 zlo velocity 0 0 0 zhi velocity 0 1e-5 0

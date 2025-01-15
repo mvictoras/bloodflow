@@ -41,8 +41,6 @@
 #include "neighbor.h"
 
 #include "latticeDecomposition.h"
-//#include "nearestTwoNeighborLattices3D.h"
-//#include "senseiConfig.h"
 #ifdef ENABLE_ASCENT
 #include "Bridge.h"
 #endif
@@ -298,9 +296,9 @@ int main(int argc, char* argv[]) {
     const int ny = 30;
     const int nz = 80;
     //using namespace opts;
-    #ifdef ENABLE_ASCENT
+#ifdef ENABLE_ASCENT
     Bridge::getInstance().Initialize(global::mpi().getGlobalCommunicator());
-    #endif
+#endif
     /*Options ops(argc, argv);
     ops
     #ifdef ENABLE_SENSEI

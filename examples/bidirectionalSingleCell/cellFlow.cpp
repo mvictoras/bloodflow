@@ -42,55 +42,9 @@
 #include "neighbor.h"
 
 #include "latticeDecomposition.h"
-//#include "nearestTwoNeighborLattices3D.h"
-// #include "senseiConfig.h"
-//#ifdef ENABLE_SENSEI
-// #include <svtkPolyData.h>
-#include <svtkMultiBlockDataSet.h>
-#include <svtkVersion.h>
-#include <svtkImageData.h>
-#include <vtkXMLImageDataWriter.h>
-// #include <vtkUnsignedCharArray.h>
-#include <svtkUnsignedCharArray.h>
-#include <svtkPointData.h>
-#include <svtkDataArray.h>
-#include <svtkImageData.h>
-#include <svtkDoubleArray.h>
-#include <svtkSmartPointer.h>
-#include <svtkUniformGrid.h> 
+#ifdef ENABLE_ASCENT
 #include "Bridge.h"
-
-#include "LPdataAdaptor.h"
-#include <DataAdaptor.h>
-
-
-// #include <SVTKDataAdaptor.h>
-#include <MeshMetadata.h>
-#include <MeshMetadataMap.h>
-//#endif
-
-
-// #include "Oscillator.h"
-
-// #include <SVTKDataAdaptor.h>
-#include <MeshMetadata.h>
-#include <MeshMetadataMap.h>
-
-#include <svtkPolyData.h>
-#include <svtkMultiBlockDataSet.h>
-#include <svtkPoints.h>
-#include <svtkPointData.h>
-#include <svtkFloatArray.h>
-#include <svtkIntArray.h>
-#include <svtkSmartPointer.h>
-#include <svtkDataObject.h> // mesh is this
-
-#include <fstream>
-#include <string>
-#include <vector>
-#include <stdexcept>
-#include <cmath>
-#include <algorithm>
+#endif
 
 using namespace plb;
 using namespace std;
@@ -418,90 +372,6 @@ void writeVTK(MultiBlockLattice3D<T,DESCRIPTOR>& lattice,
     //vtkOut.writeData<3,float>(*computeVorticity(*computeVelocity(lattice)), "vorticity", 1./dt);
 }
 //**************************************
-
-void VtkPalabos(MultiBlockLattice3D<T, DESCRIPTOR>& lattice,
-    IncomprFlowParam<T> const& parameters,  plint iter)
-{
-
-	MultiTensorField3D<double, 3> velocityArray=*computeVelocity(lattice);
- 	MultiTensorField3D<double, 3> VorticityArray=*computeVorticity(*computeVelocity(lattice));
-	MultiScalarField3D<double> VelocityNormArray=*computeVelocityNorm(lattice);
-
- 	pcout << VelocityNormArray << endl; 
-	int  nx = parameters.getNx();  
-	int  ny = parameters.getNy();  
-	int  nz = parameters.getNz();
-  
-	svtkSmartPointer<svtkImageData> imageData =
-        	svtkSmartPointer<svtkImageData>::New();
-
-	imageData->SetDimensions(nx, ny, nz);
-
-	//vtkSmartPointer<vtkDoubleArray> VelocityValues =
-        //	vtkSmartPointer<vtkDoubleArray>::New();
-	
-	svtkDoubleArray *VelocityValues = svtkDoubleArray::New(); 	 
-	
-	VelocityValues->SetNumberOfComponents(3);
-	VelocityValues->SetNumberOfTuples(nx * ny * nz); 
-
-	//vtkSmartPointer<vtkDoubleArray> VorticityValues =
-          //      vtkSmartPointer<vtkDoubleArray>::New();
-      
-	svtkDoubleArray *VorticityValues = svtkDoubleArray::New();
-        
-	VorticityValues->SetNumberOfComponents(3);
-        VorticityValues->SetNumberOfTuples(nx * ny * nz);
-
-//	vtkSmartPointer<vtkDoubleArray> VelocityNormValues =
-  //              vtkSmartPointer<vtkDoubleArray>::New();
-
-	svtkDoubleArray *VelocityNormValues = svtkDoubleArray::New();
-	
-        VelocityNormValues->SetNumberOfComponents(1);
-        VelocityNormValues->SetNumberOfTuples(nx * ny * nz);
- 
-	for (int i=0; i<nz; i++)  
-	{
- 		for (int j=0; j<ny; j++)
-        	{
-                	for (int k=0; k<nx; k++) 
-                	{	
-			Array<double,3> vel = velocityArray.get(k,j,i); 
-			Array<double,3> vor = VorticityArray.get(k,j,i); 
-			double norm = VelocityNormArray.get(k,j,i);
-  
-			int index = j * nx + k + i * nx * ny; 
-   
-			VelocityValues->SetTuple3(index,vel[0],vel[1],vel[2]);
-			VorticityValues->SetTuple3(index,vor[0],vor[1],vor[2]);
-			VelocityNormValues->SetTuple1(index,norm);	  
-			}
-		}
-	}
-
-
-	imageData->GetPointData()->AddArray(VelocityValues);
-		VelocityValues->SetName("Velocity");
-
-	imageData->GetPointData()->AddArray(VorticityValues);
-        VorticityValues->SetName("Vorticity");
-	
-    imageData->GetPointData()->AddArray(VelocityNormValues); // add these lines to add Array pb_vel
-        VelocityNormValues->SetName("Velocity Norm");
-
-//	vtkSmartPointer<vtkXMLImageDataWriter> writer =
-//		vtkSmartPointer<vtkXMLImageDataWriter>::New();
-
-//	char filename[64];
-//      sprintf (filename, "VtkDataStruc%d.vti", iter);
-
-//	writer->SetInputData(imageData);
-//	writer->SetFileName(filename);
-//	writer->Write();
-}
-
-
 int main(int argc, char* argv[]) {
     plbInit(&argc, &argv);
     global::directories().setOutputDir("./tmp/");
@@ -519,17 +389,15 @@ int main(int argc, char* argv[]) {
     //const plint Nref = 50;
     //const T uMaxRef = 0.01;
     const T uMax = 0.00075;//uMaxRef /(T)N * (T)Nref; // Needed to avoid compressibility errors
-    const int nx = 40;
-    const int ny = 40;
+    const int nx = 30;
+    const int ny = 30;
     const int nz = 80;
     //using namespace opts;
 
-    char* config_file = argv[4];
-    string cfg_file(config_file);
-    // std::cout << "input file is " << cfg_file << std::endl;
-    Bridge::Initialize(global::mpi().getGlobalCommunicator(), cfg_file); // replaced with MPI_COMM_WORLD 
-    
-    // Bridge::Initialize(MPI_COMM_WORLD, config_file);
+#ifdef ENABLE_ASCENT
+    Bridge::getInstance().Initialize(global::mpi().getGlobalCommunicator());
+#endif
+
     /*Options ops(argc, argv);
     ops
     #ifdef ENABLE_SENSEI
@@ -553,7 +421,9 @@ int main(int argc, char* argv[]) {
     // LammpsWrapper wrapper(argv,MPI_COMM_WORLD);
 
     char * inlmp = argv[1];
+    std::cout << "HERE--------" << std::endl;
     wrapper.execFile(inlmp);
+    std::cout << "ASDFASDFASFAS" << std::endl;
    
     //MultiTensorField3D<T,3> vel(parameters.getNx(),parameters.getNy(),parameters.getNz());
     plint mysize = global::mpi().getSize();
@@ -652,6 +522,7 @@ int main(int argc, char* argv[]) {
     int nanglelist;
     int nghost;
     double **x;
+    double **v;
    
     int **anglelist;
     // Array<double,3> center(0.,0.,0.);
@@ -689,6 +560,7 @@ int main(int argc, char* argv[]) {
         nanglelist = wrapper.lmp->neighbor->nanglelist;
         nghost = wrapper.lmp->atom->nghost;
         x = wrapper.lmp->atom->x;
+        v = wrapper.lmp->atom->v;
         anglelist = wrapper.lmp->neighbor->anglelist;
         
 
@@ -707,10 +579,12 @@ int main(int argc, char* argv[]) {
         //cout<<"Rank: " << myrank <<" Vorticity Extents: " <<vorticityArray.getNx() << " " << vorticityArray.getNy() << " " << vorticityArray.getNz()<<endl;
         //cout<<"Rank: " << myrank <<" Velocity Extents: " <<velocityArray.getNx() << " " << velocityArray.getNy() << " " << velocityArray.getNz()<<endl;
         //cout<<"Rank: " << myrank <<" Velocity Norm Extents: " <<velocityNormArray.getNx() << " " << velocityNormArray.getNy() << " " << velocityNormArray.getNz()<<endl;
+#ifdef ENABLE_ASCENT
         if (iT%(iSave) ==0 && iT >0){
-        Bridge::SetData(x, ntimestep, nghost ,nlocal, anglelist, nanglelist,
-			            velocityArray, vorticityArray, velocityNormArray, 
-                        nx, ny, nz, domain, envelopeWidth);
+        Bridge::getInstance().Publish(x, v, ntimestep, nghost ,nlocal, anglelist, nanglelist,
+                            velocityArray, vorticityArray, velocityNormArray, 
+                            nx, ny, nz, domain, envelopeWidth);
+                            /*
         sensei::DataAdaptor *daOut = nullptr;
         Bridge::Analyze(time++, &daOut);
 
@@ -762,10 +636,10 @@ int main(int argc, char* argv[]) {
             daOut->ReleaseData();
             daOut->Delete();
             }
- 
+ */
         }
         // deposits a single molecule into the domain through use of fix deposit:
-        
+#endif        
 
         // Clear and spread fluid force
         setExternalVector(lattice,lattice.getBoundingBox(),DESCRIPTOR<T>::ExternalField::forceBeginsAt,force);
@@ -793,7 +667,9 @@ int main(int argc, char* argv[]) {
     timeduration = global::timer("mainloop").stop();
     pcout<<"total execution time "<<timeduration<<endl;
     delete boundaryCondition;
-    Bridge::Finalize();
+#ifdef ENABLE_ASCENT
+    Bridge::getInstance().Finalize();
+#endif
 }
 
 

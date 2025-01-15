@@ -1,73 +1,60 @@
 #include "Bridge.h"
-#include "LPdataAdaptor.h"
-#include <svtkSmartPointer.h>
-#include <ConfigurableAnalysis.h>
 #include <iostream>
 
 using namespace std;
 using namespace plb; 
-namespace Bridge
-{
-   static svtkSmartPointer<senseiLP::LPDataAdaptor>  GlobalDataAdaptor;
-   static svtkSmartPointer<sensei::ConfigurableAnalysis> GlobalAnalysisAdaptor;
-  
-   svtkDoubleArray *velocityDoubleArray = svtkDoubleArray::New(); //jifu: 5/31/22, define it as global and release it later
-   svtkDoubleArray *vorticityDoubleArray = svtkDoubleArray::New();
-   svtkDoubleArray *velocityNormDoubleArray = svtkDoubleArray::New();
 
-   // bidirectional_proxies arrays:
-   
+std::unique_ptr<Bridge> Bridge::singleton_;
 
-void Initialize(MPI_Comm world, const std::string& config_file){
-   
-   GlobalDataAdaptor = svtkSmartPointer<senseiLP::LPDataAdaptor>::New();
-   GlobalDataAdaptor->Initialize();
-   GlobalDataAdaptor->SetCommunicator(world);
-   GlobalDataAdaptor->SetDataTimeStep(-1); //XXX Why -1?
-
-   GlobalAnalysisAdaptor = svtkSmartPointer<sensei::ConfigurableAnalysis>::New();
-
-   GlobalAnalysisAdaptor->Initialize(config_file);
-
+Bridge::Bridge() {
 }
-void SetData(double **x, long ntimestep, int nghost, 
-             int nlocal, int **anglelist, int nanglelist, 
-	         TensorField3D<double, 3> velocityArray,
-	         TensorField3D<double, 3> vorticityArray,
-	         ScalarField3D<double> velocityNormArray,
-           int nx, int ny, int nz, Box3D domainBox, plint envelopeWidth)
-{
-  GlobalDataAdaptor->AddLAMMPSData(x, ntimestep, nghost, nlocal, anglelist, nanglelist);
 
-  /*vtkDoubleArray *velocityDoubleArray = vtkDoubleArray::New();
-  vtkDoubleArray *vorticityDoubleArray = vtkDoubleArray::New();
-  vtkDoubleArray *velocityNormDoubleArray = vtkDoubleArray::New();
-  */
+Bridge::~Bridge() {
+}
 
-//XXXNew local values added with domainBox 2/23/22*****
+// Define the static method to get the singleton instance
+Bridge& Bridge::getInstance() {
+  static std::once_flag flag;
+  std::call_once(flag, [](){
+      singleton_.reset(new Bridge());
+      });
+  return *singleton_;
+}
+
+void Bridge::Initialize(MPI_Comm world) {
+  conduit::Node ascent_opts;
+  ascent_opts["mpi_comm"] = MPI_Comm_c2f(world);
+  mAscent.open(ascent_opts);
+}
+
+void Bridge::Publish  (double **x, double **v, long ntimestep, int nghost, 
+                      int nlocal, int **anglelist, int nanglelist, 
+                      TensorField3D<double, 3> velocityArray,
+                      TensorField3D<double, 3> vorticityArray,
+                      ScalarField3D<double> velocityNormArray,
+                      int nx, int ny, int nz, Box3D domainBox, plint envelopeWidth) {
+
+  
+
+  conduit::Node mesh;
+  const int num_tris = nanglelist;
+  const int conn_len = num_tris * 3;
+  vector<double> velocity_x, velocity_y, velocity_z;
+  vector<double> vorticity_x, vorticity_y, vorticity_z;
   int nlx = velocityArray.getNx(); 
   int nly = velocityArray.getNy();
   int nlz = velocityArray.getNz();
-  plint myrank = global::mpi().getRank();
 
-//*****************************************************
-  velocityDoubleArray->SetNumberOfComponents(3);
-  velocityDoubleArray->SetNumberOfTuples((nlx) * (nly) * (nlz)); 
-
-  vorticityDoubleArray->SetNumberOfComponents(3);
-  vorticityDoubleArray->SetNumberOfTuples((nlx) * (nly) * (nlz));
-
-  velocityNormDoubleArray->SetNumberOfComponents(1);
-  velocityNormDoubleArray->SetNumberOfTuples((nlx) * (nly) * (nlz));
-
-
-   //plint EW = envelopeWidth;
-
-//XXX Need to convert this to zero copy: FUTURE WORK
+  mesh["state/cycle"] = ntimestep;
+  mesh["coordsets/fluid_coords/type"] = "uniform";
+  mesh["coordsets/fluid_coords/dims/i"] = nlx;
+  mesh["coordsets/fluid_coords/dims/j"] = nly;
+  mesh["coordsets/fluid_coords/dims/k"] = nlz;
+  mesh["topologies/fluid_topo/type"] = "uniform";
+  mesh["topologies/fluid_topo/coordset"] = "fluid_coords";
 
   Array<double,3> vel(0.,0.,0.); //jifu 5/31/2022
   Array<double,3> vor(0.,0.,0.);
-        
   for (int k=0; k<nlz; k++)
   {
     for (int j=0; j<nly; j++)
@@ -78,31 +65,92 @@ void SetData(double **x, long ntimestep, int nghost,
         vor = vorticityArray.get(i,j,k);
         double norm = velocityNormArray.get(i,j,k);
         int index = (j) * (nlx) + (i) + (k) * (nlx) * (nly);
-        velocityDoubleArray->SetTuple3(index,vel[0],vel[1],vel[2]);
-        vorticityDoubleArray->SetTuple3(index,vor[0],vor[1],vor[2]);
-        velocityNormDoubleArray->SetTuple1(index,norm);
-
+        velocity_x.push_back(vel[0]);
+        velocity_y.push_back(vel[1]);
+        velocity_z.push_back(vel[2]);
+        vorticity_x.push_back(vor[0]);
+        vorticity_y.push_back(vor[1]);
+        vorticity_z.push_back(vor[2]);
+        //velocityNormDoubleArray->SetTuple1(index,norm);
       }
     }
   }
- GlobalDataAdaptor->AddPalabosData(velocityDoubleArray, vorticityDoubleArray, velocityNormDoubleArray, nx, ny, nz, domainBox, envelopeWidth);
 
+  // Now add velocity as separate arrays
+  mesh["fields/fluid_velocity/association"] = "vertex";
+  mesh["fields/fluid_velocity/topology"]    = "fluid_topo";
+  mesh["fields/fluid_velocity/values/x"].set(velocity_x);
+  mesh["fields/fluid_velocity/values/y"].set(velocity_y);
+  mesh["fields/fluid_velocity/values/z"].set(velocity_z);
+
+  mesh["fields/fluid_vorticity/association"] = "vertex";
+  mesh["fields/fluid_vorticity/topology"]    = "fluid_topo";
+  mesh["fields/fluid_vorticity/values/x"].set(velocity_x);
+  mesh["fields/fluid_vorticity/values/y"].set(velocity_y);
+  mesh["fields/fluid_vorticity/values/z"].set(velocity_z);
+
+  int nvals = nlocal+nghost;
+  mesh["coordsets/particle_coords/type"] = "explicit";
+  mesh["coordsets/particle_coords/values/x"].set(conduit::DataType::float64(nvals));
+  mesh["coordsets/particle_coords/values/y"].set(conduit::DataType::float64(nvals));
+  mesh["coordsets/particle_coords/values/z"].set(conduit::DataType::float64(nvals));
+
+  mesh["topologies/particle_topo/type"]           = "unstructured";
+  mesh["topologies/particle_topo/coordset"]       = "particle_coords";
+  mesh["topologies/particle_topo/elements/shape"] = "tri";
+  mesh["topologies/particle_topo/elements/connectivity"].set(conduit::DataType::int32(nanglelist * 3));
+
+  // Get pointers to fill in
+  double_t *x_ptr = mesh["coordsets/particle_coords/values/x"].value();
+  double_t *y_ptr = mesh["coordsets/particle_coords/values/y"].value();
+  double_t *z_ptr = mesh["coordsets/particle_coords/values/z"].value();
+  int *conn = mesh["topologies/particle_topo/elements/connectivity"].value();
+  
+  for(int i=0; i<nvals; ++i) {
+    x_ptr[i] = x[i][0];
+    y_ptr[i] = x[i][1];
+    z_ptr[i] = x[i][2];
+
+  }
+
+  // Fill the connectivity array
+  for(int i = 0, j =0; i < nanglelist; i++) {
+      conn[j++] = anglelist[i][0];
+      conn[j++] = anglelist[i][1];
+      conn[j++] = anglelist[i][2];
+  }
+
+  // print out results
+
+  mesh["fields/particle_velocity_magnitude"]["association"] = "vertex";   // data per particle (vertex)
+  mesh["fields/particle_velocity_magnitude"]["topology"]    = "particle_topo";
+  mesh["fields/particle_velocity_magnitude"]["values"].set(conduit::DataType::float64(nlocal));
+  double *velMag = mesh["fields/particle_velocity_magnitude"]["values"].value();
+
+  for(int i=0; i<nlocal; ++i)
+  {
+      double vx = v[i][0];
+      double vy = v[i][1];
+      double vz = v[i][2];
+      velMag[i] = std::sqrt(vx*vx + vy*vy + vz*vz);
+  }
+  
+  conduit::Node verify_info;
+  if(!conduit::blueprint::mesh::verify(mesh, verify_info))
+  {
+      std::cerr << "Mesh verification failed!" << std::endl;
+      verify_info.print();
+      exit(EXIT_FAILURE);
+  }
+  
+  mAscent.publish(mesh);
+
+  conduit::Node actions;
+  mAscent.execute(actions);
+  
 }
-void Analyze(long ntimestep, sensei::DataAdaptor **dataOut)
-{
-   GlobalDataAdaptor->SetDataTimeStep(ntimestep);
-   GlobalDataAdaptor->SetDataTime(ntimestep);
-   GlobalAnalysisAdaptor->Execute(GlobalDataAdaptor.GetPointer(), dataOut);
-   GlobalDataAdaptor->ReleaseData();
-}
-void Finalize()
-   {
-   GlobalAnalysisAdaptor->Finalize();
-   GlobalAnalysisAdaptor = NULL;
-   GlobalDataAdaptor = NULL;
-   velocityDoubleArray->Delete(); 
-   vorticityDoubleArray->Delete(); 
-   velocityNormDoubleArray->Delete(); // jifu: 5/31/2022 working, memory leakage is fixed 
-   }
+
+void Bridge::Finalize() {
+  mAscent.close();
 }
 
