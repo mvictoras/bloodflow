@@ -50,13 +50,6 @@ rebuildandrun.sh
 *.exe
 *.out
 *.app
-examples/bidirectionalSingleCell/out.lmp4cell
-examples/bidirectionalSingleCell/CMakeLists.txt
-setup3.sh
-setup2.sh
-setup.sh
-examples/bidirectionalSingleCell/in.rbcmolecule
-examples/bidirectionalSingleCell/in.deposit
 
 .DS_Store
 .vscode

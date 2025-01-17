@@ -584,6 +584,16 @@ int main(int argc, char* argv[]) {
         Bridge::getInstance().Publish(x, v, ntimestep, nghost ,nlocal, anglelist, nanglelist,
                             velocityArray, vorticityArray, velocityNormArray, 
                             nx, ny, nz, domain, envelopeWidth);
+        if(iT == 5) {
+            std::cout << "Imserting a new RBC" << std::endl;
+            double pt[] = {10.0, 10.0, 5.0};
+            fixDepositString << "fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian "<<pt[0]<<" "<<pt[1]<<" "<< pt[2] << " 10 near 2 "<<endl;
+            wrapper.execCommand(fixDepositString);
+            //wrapper.execCommand("fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian 10 10 5 10 near 2 ");// this is working, 7/6/2023 TISHCHENKO
+            fixDepositString.str("");
+
+        }
+
                             /*
         sensei::DataAdaptor *daOut = nullptr;
         Bridge::Analyze(time++, &daOut);
@@ -646,7 +656,12 @@ int main(int argc, char* argv[]) {
         ////------------ classical ibm coupling-------------//
         spreadForce3D(lattice,wrapper);
         ///--------------redefine a new domain--------------// NT 12/20
-        // modifyDynamicBoundaryFromDataProcessor(lattice, xc, yc, radius, radiusNorm, iT, zLength, clotLoc);
+        if(iT == 6) {
+            std::cout << "New clot" << std::endl;
+            //clotLoc = 1;
+            //radius = 10;
+            modifyDynamicBoundaryFromDataProcessor(lattice, xc, yc, radius, radiusNorm, iT, zLength, clotLoc);
+        }
         ////// Lattice Boltzmann iteration step.
 
         // for(int iteration=0; iteration<iterationCAS; iteration++){
