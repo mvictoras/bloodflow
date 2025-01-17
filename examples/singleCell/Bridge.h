@@ -3,7 +3,7 @@
 #include <string>
 #include "palabos3D.h"
 #include "palabos3D.hh"
-
+#include <mutex>
 #include <ascent.hpp>
 
 using namespace plb; 
