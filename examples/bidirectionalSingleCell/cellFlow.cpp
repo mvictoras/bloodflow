@@ -43,6 +43,9 @@
 
 #include "latticeDecomposition.h"
 #ifdef ENABLE_ASCENT
+#include <random>
+#include <sstream>
+#include <conduit.hpp>
 #include "Bridge.h"
 #endif
 
@@ -371,6 +374,33 @@ void writeVTK(MultiBlockLattice3D<T,DESCRIPTOR>& lattice,
     vtkOut.writeData<3,float>(*computeVelocity(lattice,domain), "velocity", 1);
     //vtkOut.writeData<3,float>(*computeVorticity(*computeVelocity(lattice)), "vorticity", 1./dt);
 }
+
+LammpsWrapper* wrapper;
+
+#ifdef ENABLE_ASCENT
+double random_double(double min, double max) {
+    static std::random_device rd;  // Seed for the random number engine
+    static std::mt19937 gen(rd()); // Mersenne Twister engine
+    std::uniform_real_distribution<> dis(min, max);
+    return dis(gen);
+}
+
+void addRandomCell(conduit::Node &params, conduit::Node &output) {
+    std::cout << "Inserting a new RBC" << std::endl;
+    double pt[] = {random_double(0.0, 20.0), random_double(0.0, 20.0), random_double(0.0, 20.0)};
+    std::ostringstream fixDepositString;
+    fixDepositString << "fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian "
+                     << pt[0] << " " << pt[1] << " " << pt[2] << " 10 near 2 " << std::endl;
+
+    std::string commandStr = fixDepositString.str();
+    std::vector<char> commandVec(commandStr.begin(), commandStr.end());
+    commandVec.push_back('\0');
+
+    wrapper->execCommand(commandVec.data());
+    fixDepositString.str("");
+}
+#endif
+
 //**************************************
 int main(int argc, char* argv[]) {
     plbInit(&argc, &argv);
@@ -396,6 +426,7 @@ int main(int argc, char* argv[]) {
 
 #ifdef ENABLE_ASCENT
     Bridge::getInstance().Initialize(global::mpi().getGlobalCommunicator());
+    ascent::register_callback("addRandomCell", addRandomCell);
 #endif
 
     /*Options ops(argc, argv);
@@ -417,12 +448,12 @@ int main(int argc, char* argv[]) {
     //plint iCheck = 10*iSave;
     writeLogFile(parameters, "3D square Poiseuille");
 
-    LammpsWrapper wrapper(argv,global::mpi().getGlobalCommunicator()); // replaced with MPI_COMM_WORLD
+    wrapper = new LammpsWrapper(argv,global::mpi().getGlobalCommunicator()); // replaced with MPI_COMM_WORLD
     // LammpsWrapper wrapper(argv,MPI_COMM_WORLD);
 
     char * inlmp = argv[1];
     std::cout << "HERE--------" << std::endl;
-    wrapper.execFile(inlmp);
+    wrapper->execFile(inlmp);
     std::cout << "ASDFASDFASFAS" << std::endl;
    
     //MultiTensorField3D<T,3> vel(parameters.getNx(),parameters.getNy(),parameters.getNz());
@@ -431,7 +462,7 @@ int main(int argc, char* argv[]) {
 
     pcout<<"Nx,Ny,Nz "<<parameters.getNx()<<" "<<parameters.getNy()<<" "<<parameters.getNz()<<endl;
     LatticeDecomposition lDec(parameters.getNx(),parameters.getNy(),parameters.getNz(),
-                              wrapper.lmp, localdomain); //XXX sending a double array to store extents of each processor for palabos data (Connor Murphy 2/19/22)
+                              wrapper->lmp, localdomain); //XXX sending a double array to store extents of each processor for palabos data (Connor Murphy 2/19/22)
 
     SparseBlockStructure3D blockStructure = lDec.getBlockDistribution();
     ExplicitThreadAttribution* threadAttribution = lDec.getThreadAttribution();
@@ -546,22 +577,22 @@ int main(int argc, char* argv[]) {
     for (plint iT=0; iT<maxT; ++iT) {
         
         // if (iT%iSave ==0 && iT >0){
-        //     wrapper.execCommand("fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian 15 15 10 10 near 4");
-        //     // wrapper.execFile("in.deposit");
-        //     // wrapper.execCommand("dump 1 cells xyz 1 dump.rbc.xyz");
+        //     wrapper->execCommand("fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian 15 15 10 10 near 4");
+        //     // wrapper->execFile("in.deposit");
+        //     // wrapper->execCommand("dump 1 cells xyz 1 dump.rbc.xyz");
         // }
         // lammps to calculate force
-        // wrapper.execCommand("run 1"); // pre no post no");
-        wrapper.execCommand("run 1 pre no post no");
+        // wrapper->execCommand("run 1"); // pre no post no");
+        wrapper->execCommand("run 1 pre no post no");
 
         //Some values are dynamically changing
-        nlocal = wrapper.lmp->atom->nlocal;
-        ntimestep = wrapper.lmp->update->ntimestep;
-        nanglelist = wrapper.lmp->neighbor->nanglelist;
-        nghost = wrapper.lmp->atom->nghost;
-        x = wrapper.lmp->atom->x;
-        v = wrapper.lmp->atom->v;
-        anglelist = wrapper.lmp->neighbor->anglelist;
+        nlocal = wrapper->lmp->atom->nlocal;
+        ntimestep = wrapper->lmp->update->ntimestep;
+        nanglelist = wrapper->lmp->neighbor->nanglelist;
+        nghost = wrapper->lmp->atom->nghost;
+        x = wrapper->lmp->atom->x;
+        v = wrapper->lmp->atom->v;
+        anglelist = wrapper->lmp->neighbor->anglelist;
         
 
         //*************************************
@@ -584,15 +615,11 @@ int main(int argc, char* argv[]) {
         Bridge::getInstance().Publish(x, v, ntimestep, nghost ,nlocal, anglelist, nanglelist,
                             velocityArray, vorticityArray, velocityNormArray, 
                             nx, ny, nz, domain, envelopeWidth);
-        if(iT == 5) {
-            std::cout << "Imserting a new RBC" << std::endl;
-            double pt[] = {10.0, 10.0, 5.0};
-            fixDepositString << "fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian "<<pt[0]<<" "<<pt[1]<<" "<< pt[2] << " 10 near 2 "<<endl;
-            wrapper.execCommand(fixDepositString);
-            //wrapper.execCommand("fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian 10 10 5 10 near 2 ");// this is working, 7/6/2023 TISHCHENKO
-            fixDepositString.str("");
-
-        }
+            // std::cout << "Inserting a new RBC" << std::endl;
+            // double pt[] = {random_double(0.0, 20.0), random_double(0.0, 20.0), random_double(0.0, 20.0)};
+            // fixDepositString << "fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian "<<pt[0]<<" "<<pt[1]<<" "<< pt[2] << " 10 near 2 "<<endl;
+            // wrapper->execCommand(fixDepositString);
+            // fixDepositString.str("");
 
                             /*
         sensei::DataAdaptor *daOut = nullptr;
@@ -617,7 +644,7 @@ int main(int argc, char* argv[]) {
                     // cout <<" -----------------------point " << pt[0] << " " << pt[1] << " " << pt[2] << endl;
                     mesh->Delete();
 
-                    // wrapper.execCommand("fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian 10 10 5 15 near 4 ");
+                    // wrapper->execCommand("fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian 10 10 5 15 near 4 ");
                     
                 }
                 // broadcast the data to all ranks
@@ -634,15 +661,15 @@ int main(int argc, char* argv[]) {
                 // const string fixDeposit = fixDepositString.str().c_str();
                 //fixID++;
                 // cout << fixDepositString.str() << endl;
-                wrapper.execCommand(fixDepositString);
+                wrapper->execCommand(fixDepositString);
                 //clear fixDepositString
                 fixDepositString.str("");
             // }
 
-            // wrapper.execCommand("fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian 10 10 5 10 near 2 ");// this is working, 7/6/2023 TISHCHENKO
+            // wrapper->execCommand("fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian 10 10 5 10 near 2 ");// this is working, 7/6/2023 TISHCHENKO
             
 
-            // wrapper.execCommand("dump 1 cells xyz 1 dump.rbc.xyz");
+            // wrapper->execCommand("dump 1 cells xyz 1 dump.rbc.xyz");
             daOut->ReleaseData();
             daOut->Delete();
             }
@@ -654,7 +681,7 @@ int main(int argc, char* argv[]) {
         // Clear and spread fluid force
         setExternalVector(lattice,lattice.getBoundingBox(),DESCRIPTOR<T>::ExternalField::forceBeginsAt,force);
         ////------------ classical ibm coupling-------------//
-        spreadForce3D(lattice,wrapper);
+        spreadForce3D(lattice,*wrapper);
         ///--------------redefine a new domain--------------// NT 12/20
         if(iT == 6) {
             std::cout << "New clot" << std::endl;
@@ -671,14 +698,14 @@ int main(int argc, char* argv[]) {
         
         lattice.collideAndStream();
         ////// Interpolate and update solid position
-        interpolateVelocity3D(lattice,wrapper);
+        interpolateVelocity3D(lattice,*wrapper);
         //-----force FSI ibm coupling-------------//
         //forceCoupling3D(lattice,wrapper);
         //lattice.collideAndStream();
         //writeVTK(lattice, domainBox, iT);
 	
     }
-    wrapper.execCommand("dump 2 cells xyz 1 dump2.rbc.xyz");
+    wrapper->execCommand("dump 2 cells xyz 1 dump2.rbc.xyz");
     timeduration = global::timer("mainloop").stop();
     pcout<<"total execution time "<<timeduration<<endl;
     delete boundaryCondition;

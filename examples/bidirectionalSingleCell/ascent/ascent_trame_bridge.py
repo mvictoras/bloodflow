@@ -40,30 +40,7 @@ def main():
     update_data = comm.bcast(update_data, root=0)
 
 
-def update_cinema_yaml(
-    file_path, new_phi=None, new_theta=None, new_zoom=None, new_annotations=None
-):
-    with open(file_path, "r") as file:
-        data = yaml.safe_load(file)
-
-    for entry in data:
-        if "scenes" in entry:
-            for scene in entry["scenes"].values():
-                if "renders" in scene:
-                    for render in scene["renders"].values():
-                        if new_phi is not None and "phi" in render:
-                            render["phi"] = new_phi
-                        if new_theta is not None and "theta" in render:
-                            render["theta"] = new_theta
-                        if new_zoom is not None and "camera" in render:
-                            render["camera"]["zoom"] = new_zoom
-                        if new_annotations is not None and "annotations" in render:
-                            render["annotations"] = new_annotations
-
-    with open(file_path, "w") as file:
-        yaml.dump(data, file, default_flow_style=False)
-
-
+# Realized that the client is pretty much always going to run where the server is, making this not necessary
 def create_zip_file(source_dir, zip_name="cinema_data.zip"):
     with zipfile.ZipFile(zip_name, "w") as zipf:
         for root, _, files in os.walk(source_dir):
@@ -112,17 +89,11 @@ def executeMainTask(comm):
 
         update_data = queue_signal.get()
 
-        if any(key in update_data for key in ["phi", "theta", "zoom", "annotations"]):
-            yaml_file = "cinema.yaml"
-            print(f"Updating cinema yaml file: {yaml_file}")
-            print(f"Updates: {update_data}")
-            update_cinema_yaml(
-                yaml_file,
-                new_phi=update_data.get("phi"),
-                new_theta=update_data.get("theta"),
-                new_zoom=update_data.get("zoom"),
-                new_annotations=update_data.get("annotations"),
-            )
+        update_node = conduit.Node()
+        output_node = conduit.Node()
+
+        if "new_cell" in update_data:
+            ascent.mpi.execute_callback("addRandomCell", update_node, output_node)
 
     return update_data
 
