@@ -44,7 +44,7 @@
 
 #include "latticeDecomposition.h"
 #ifdef ENABLE_ASCENT
-#include "Bridge.h"
+#include "insitu/AscentBridge.h"
 #endif
 
 using namespace plb;
@@ -394,7 +394,7 @@ int main(int argc, char* argv[]) {
     //using namespace opts;
 
 #ifdef ENABLE_ASCENT
-    Bridge::getInstance().Initialize(global::mpi().getGlobalCommunicator());
+    AscentBridge::getInstance().Initialize(global::mpi().getGlobalCommunicator());
 #endif
 
     /*Options ops(argc, argv);
@@ -602,76 +602,21 @@ int main(int argc, char* argv[]) {
         //cout<<"Rank: " << myrank <<" Velocity Norm Extents: " <<velocityNormArray.getNx() << " " << velocityNormArray.getNy() << " " << velocityNormArray.getNz()<<endl;
 #ifdef ENABLE_ASCENT
         if (iT%(iSave) ==0 && iT >0){
-        Bridge::getInstance().Publish(x, v, ntimestep, nghost ,nlocal, anglelist, nanglelist,
-                            velocityArray, vorticityArray, velocityNormArray, 
-                            nx, ny, nz, domain, envelopeWidth);
-        if(iT == 5) {
-            std::cout << "Inserting a new RBC" << std::endl;
-            int pt[] = {10, 10, 10};
-            fixDepositString << "fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian "<<pt[0]<<" "<<pt[1]<<" "<< pt[2] << " 1 near 2 "<<endl;
-            std::cout << "Deposit string: " << fixDepositString.str() << std::endl;
-            //fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian 10 10 10 10 near 2 # vz 10 20 
-            wrapper.execCommand(fixDepositString);
-            //wrapper.execCommand("fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian 10 10 5 10 near 2 ");// this is working, 7/6/2023 TISHCHENKO
-            fixDepositString.str("");
-
-        }
-
-                            /*
-        sensei::DataAdaptor *daOut = nullptr;
-        Bridge::Analyze(time++, &daOut);
-
-        double pt[3];
-
-            if (daOut) 
-            {
-                if (myrank == 0)
-                {
-                    sensei::MeshMetadataMap mdMap;
-                    mdMap.Initialize(daOut);
-                    sensei::MeshMetadataPtr mmd;
-                    mdMap.GetMeshMetadata("dataCollection", mmd);
-                    svtkDataObject* mesh = nullptr;
-                    daOut->GetMesh("dataCollection", false, mesh);
-                    daOut->AddArrays(mesh, "dataCollection", svtkDataObject::POINT, mmd->ArrayName);
-                    auto pd = svtkPolyData::SafeDownCast(svtkMultiBlockDataSet::SafeDownCast(mesh)->GetBlock(0));
-                    //double pt[3];
-                    pd->GetPoint(0, pt);
-                    // cout <<" -----------------------point " << pt[0] << " " << pt[1] << " " << pt[2] << endl;
-                    mesh->Delete();
-
-                    // wrapper.execCommand("fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian 10 10 5 15 near 4 ");
-                    
-                }
-                // broadcast the data to all ranks
-                // cout <<" before --------------------rank: "<<myrank<<" ---point " << pt[0] << " " << pt[1] << " " << pt[2] << endl;   
-            MPI_Bcast(&pt, 3, MPI_DOUBLE, 0, global::mpi().getGlobalCommunicator());
-            cout <<" --------------------rank: "<<myrank<<" ---point " << pt[0] << " " << pt[1] << " " << pt[2] << endl;    
-            // ADDED 7/6/2023 TISHCHENKO
-            // if (iT%iSave ==0 && iT >0){
-                //fixDepositString << "fix " << fixID <<" cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian "<<pt[0]<<" "<<pt[1]<<" "<< pt[2] << " 10 near 2" << endl;
-                 //fixDepositString<< "fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian 10 10 5 15 near 2" << endl;
-                
-                fixDepositString << "fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian "<<pt[0]<<" "<<pt[1]<<" "<< pt[2] << " 10 near 2 "<<endl;
-                //fixDepositString = "fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian "+ to_string(pt[0])+" "+ to_string(pt[1]) + " " + to_string(pt[2]) + " 10 near 2";// << endl;
-                // const string fixDeposit = fixDepositString.str().c_str();
-                //fixID++;
-                // cout << fixDepositString.str() << endl;
+            AscentBridge::getInstance().Publish(x, v, ntimestep, nghost ,nlocal, anglelist, nanglelist,
+                                velocityArray, vorticityArray, velocityNormArray, 
+                                nx, ny, nz, domain, envelopeWidth);
+            if(iT == 5) {
+                std::cout << "Inserting a new RBC" << std::endl;
+                int pt[] = {10, 10, 10};
+                fixDepositString << "fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian "<<pt[0]<<" "<<pt[1]<<" "<< pt[2] << " 1 near 2 "<<endl;
+                std::cout << "Deposit string: " << fixDepositString.str() << std::endl;
+                //fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian 10 10 10 10 near 2 # vz 10 20 
                 wrapper.execCommand(fixDepositString);
-                //clear fixDepositString
+                //wrapper.execCommand("fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian 10 10 5 10 near 2 ");// this is working, 7/6/2023 TISHCHENKO
                 fixDepositString.str("");
-            // }
 
-            // wrapper.execCommand("fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian 10 10 5 10 near 2 ");// this is working, 7/6/2023 TISHCHENKO
-            
-
-            // wrapper.execCommand("dump 1 cells xyz 1 dump.rbc.xyz");
-            daOut->ReleaseData();
-            daOut->Delete();
             }
- */
         }
-        // deposits a single molecule into the domain through use of fix deposit:
 #endif        
 
         // Clear and spread fluid force
@@ -706,7 +651,7 @@ int main(int argc, char* argv[]) {
     pcout<<"total execution time "<<timeduration<<endl;
     delete boundaryCondition;
 #ifdef ENABLE_ASCENT
-    Bridge::getInstance().Finalize();
+    AscentBridge::getInstance().Finalize();
 #endif
 }
 

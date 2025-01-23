@@ -174,9 +174,11 @@ include_directories("${COUPLING_DIR}/src")
 # Ascent
 if(ENABLE_ASCENT)
   include_directories(
-      ${ASCENT_INSTALL_PREFIX}/include/ascent
-      ${CONDUIT_DIR}/include/conduit
+      #${ASCENT_INSTALL_PREFIX}/include/ascent
+      #${CONDUIT_DIR}/include/conduit
+      
   )
+  add_subdirectory(insitu)
   add_definitions(-DENABLE_ASCENT)
 endif()
 

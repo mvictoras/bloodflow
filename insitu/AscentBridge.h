@@ -8,28 +8,28 @@
 
 using namespace plb; 
 
-class Bridge
+class AscentBridge
 {
   protected:
-    Bridge();  // Constructor
+    AscentBridge();  // Constructor
 
     // Private static instance pointer
-    static std::unique_ptr<Bridge> singleton_;
+    static std::unique_ptr<AscentBridge> singleton_;
 
   public:
 
     /**
      * Singletons should not be cloneable.
      */
-    Bridge(const Bridge &other) = delete;
+    AscentBridge(const AscentBridge &other) = delete;
     /**
      * Singletons should not be assignable.
      */
-    Bridge& operator=(const Bridge &) = delete;
+    AscentBridge& operator=(const AscentBridge &) = delete;
 
-    ~Bridge(); // Destructor
+    ~AscentBridge(); // Destructor
 
-    static Bridge& getInstance();  // Method to get the singleton instance
+    static AscentBridge& getInstance();  // Method to get the singleton instance
 
     void Initialize(MPI_Comm world);
     
