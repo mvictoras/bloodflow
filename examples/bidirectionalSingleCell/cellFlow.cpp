@@ -447,9 +447,9 @@ int main(int argc, char* argv[]) {
 
     char * inlmp = argv[1];
 
-    wrapper.execFile(inlmp);
+    wrapper->execFile(inlmp);
 
-    LAMMPS_NS::Domain *domain = wrapper.lmp->domain;
+    LAMMPS_NS::Domain *domain = wrapper->lmp->domain;
     // Get the simulation box boundaries
     double xlo = domain->boxlo[0];
     double xhi = domain->boxhi[0];
@@ -646,8 +646,8 @@ int main(int argc, char* argv[]) {
                 fixDepositString << "fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian "<<pt[0]<<" "<<pt[1]<<" "<< pt[2] << " 1 near 2 "<<endl;
                 std::cout << "Deposit string: " << fixDepositString.str() << std::endl;
                 //fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian 10 10 10 10 near 2 # vz 10 20 
-                wrapper.execCommand(fixDepositString);
-                //wrapper.execCommand("fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian 10 10 5 10 near 2 ");// this is working, 7/6/2023 TISHCHENKO
+                wrapper->execCommand(fixDepositString);
+                //wrapper->execCommand("fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian 10 10 5 10 near 2 ");// this is working, 7/6/2023 TISHCHENKO
                 fixDepositString.str("");
             }
         }

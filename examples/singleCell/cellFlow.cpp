@@ -42,7 +42,7 @@
 
 #include "latticeDecomposition.h"
 #ifdef ENABLE_ASCENT
-#include "Bridge.h"
+#include "insitu/AscentBridge.h"
 #endif
 
 using namespace plb;
@@ -297,7 +297,7 @@ int main(int argc, char* argv[]) {
     const int nz = 80;
     //using namespace opts;
 #ifdef ENABLE_ASCENT
-    Bridge::getInstance().Initialize(global::mpi().getGlobalCommunicator());
+    AscentBridge::getInstance().Initialize(global::mpi().getGlobalCommunicator());
 #endif
     /*Options ops(argc, argv);
     ops
@@ -447,7 +447,7 @@ int main(int argc, char* argv[]) {
 #ifdef ENABLE_ASCENT
         if (iT%iSave ==0 && iT >0){
 
-            Bridge::getInstance().Publish(x, v, ntimestep, nghost ,nlocal, anglelist, nanglelist,
+            AscentBridge::getInstance().Publish(x, v, ntimestep, nghost ,nlocal, anglelist, nanglelist,
                             velocityArray, vorticityArray, velocityNormArray, 
                             nx, ny, nz, domain, envelopeWidth);
         }
@@ -472,6 +472,6 @@ int main(int argc, char* argv[]) {
     pcout<<"total execution time "<<timeduration<<endl;
     delete boundaryCondition;
 #ifdef ENABLE_ASCENT
-    Bridge::getInstance().Finalize();
+    AscentBridge::getInstance().Finalize();
 #endif
 }
