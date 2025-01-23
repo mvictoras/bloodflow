@@ -70,3 +70,9 @@ configure_file(
     "${CMAKE_CURRENT_BINARY_DIR}/ascent/ascent_trame_bridge.py"
     COPYONLY
 )
+
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/trame/trame_app.py"
+    "${CMAKE_CURRENT_BINARY_DIR}/trame/trame_app.py"
+    COPYONLY
+)
