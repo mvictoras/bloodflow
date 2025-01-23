@@ -4,7 +4,6 @@ project(BidirectionalSingleCellExample LANGUAGES CXX)
 # All code for singlecell example
 set(SINGLECELL_SOURCES
     cellFlow.cpp
-    Bridge.cpp
 )
 
 # Create the executable
@@ -18,7 +17,7 @@ set(LIBS
 
 # Conditionally add Ascent to the list
 if(ENABLE_ASCENT)
-    list(APPEND LIBS ascent::ascent_mpi)
+    list(APPEND LIBS insitu)
 endif()
 
 # If MPI is enabled, link it here as well

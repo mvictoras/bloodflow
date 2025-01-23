@@ -1,33 +1,33 @@
-#include "Bridge.h"
+#include "AscentBridge.h"
 #include <iostream>
 
 using namespace std;
 using namespace plb; 
 
-std::unique_ptr<Bridge> Bridge::singleton_;
+std::unique_ptr<AscentBridge> AscentBridge::singleton_;
 
-Bridge::Bridge() {
+AscentBridge::AscentBridge() {
 }
 
-Bridge::~Bridge() {
+AscentBridge::~AscentBridge() {
 }
 
 // Define the static method to get the singleton instance
-Bridge& Bridge::getInstance() {
+AscentBridge& AscentBridge::getInstance() {
   static std::once_flag flag;
   std::call_once(flag, [](){
-      singleton_.reset(new Bridge());
+      singleton_.reset(new AscentBridge());
       });
   return *singleton_;
 }
 
-void Bridge::Initialize(MPI_Comm world) {
+void AscentBridge::Initialize(MPI_Comm world) {
   conduit::Node ascent_opts;
   ascent_opts["mpi_comm"] = MPI_Comm_c2f(world);
   mAscent.open(ascent_opts);
 }
 
-void Bridge::Publish  (double **x, double **v, long ntimestep, int nghost, 
+void AscentBridge::Publish  (double **x, double **v, long ntimestep, int nghost, 
                       int nlocal, int **anglelist, int nanglelist, 
                       TensorField3D<double, 3> velocityArray,
                       TensorField3D<double, 3> vorticityArray,
@@ -89,7 +89,7 @@ void Bridge::Publish  (double **x, double **v, long ntimestep, int nghost,
   mesh["fields/fluid_vorticity/values/y"].set(vorticity_y);
   mesh["fields/fluid_vorticity/values/z"].set(vorticity_z);
 
-  int nvals = nlocal+nghost;
+  int nvals = nlocal;//+nghost;
   mesh["coordsets/particle_coords/type"] = "explicit";
   mesh["coordsets/particle_coords/values/x"].set(conduit::DataType::float64(nvals));
   mesh["coordsets/particle_coords/values/y"].set(conduit::DataType::float64(nvals));
@@ -150,7 +150,7 @@ void Bridge::Publish  (double **x, double **v, long ntimestep, int nghost,
   
 }
 
-void Bridge::Finalize() {
+void AscentBridge::Finalize() {
   mAscent.close();
 }
 

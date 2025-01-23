@@ -35,6 +35,7 @@
 
 #include "mpi.h"
 #include "lammps.h"
+#include "domain.h"
 #include "input.h"
 #include "library.h"
 #include "lammpsWrapper.h"
@@ -43,10 +44,12 @@
 
 #include "latticeDecomposition.h"
 #ifdef ENABLE_ASCENT
+
 #include <random>
 #include <sstream>
 #include <conduit.hpp>
-#include "Bridge.h"
+#include "insitu/AscentBridge.h"
+
 #endif
 
 using namespace plb;
@@ -322,7 +325,7 @@ private:
 void createDynamicBoundaryFromDataProcessor(
     MultiBlockLattice3D<T, DESCRIPTOR> &lattice, plint xc, plint yc, plint radius, T rn, plint zl, plint clotLoc) // removed 
 {
-    plint it = 50; // change back to 0 when finished debugging the bidirectional stuff and lammps domain stuff. 
+    plint it = 0; // change back to 0 when finished debugging the bidirectional stuff and lammps domain stuff. 
     applyProcessingFunctional(
         new DynamicBoundaryFunctional<T, DESCRIPTOR>(xc, yc, radius, rn, it, zl, clotLoc), lattice.getBoundingBox(),
         lattice);
@@ -419,13 +422,11 @@ int main(int argc, char* argv[]) {
     //const plint Nref = 50;
     //const T uMaxRef = 0.01;
     const T uMax = 0.00075;//uMaxRef /(T)N * (T)Nref; // Needed to avoid compressibility errors
-    const int nx = 30;
-    const int ny = 30;
-    const int nz = 80;
+
     //using namespace opts;
 
 #ifdef ENABLE_ASCENT
-    Bridge::getInstance().Initialize(global::mpi().getGlobalCommunicator());
+    AscentBridge::getInstance().Initialize(global::mpi().getGlobalCommunicator());
     ascent::register_callback("addRandomCell", addRandomCell);
 #endif
 
@@ -435,6 +436,38 @@ int main(int argc, char* argv[]) {
     >> Option('f', "config", config_file, "Sensei analysis configuration xml (required)")
     #endif
     */
+    
+    const T maxT = atoi(argv[2]);//6.6e4; //(T)0.01;
+    plint iSave = atoi(argv[3]);//10;//2000;//10;
+    //plint iCheck = 10*iSave;
+    
+
+    wrapper = new LammpsWrapper(argv,global::mpi().getGlobalCommunicator()); // replaced with MPI_COMM_WORLD
+    // LammpsWrapper wrapper(argv,MPI_COMM_WORLD);
+
+    char * inlmp = argv[1];
+
+    wrapper.execFile(inlmp);
+
+    LAMMPS_NS::Domain *domain = wrapper.lmp->domain;
+    // Get the simulation box boundaries
+    double xlo = domain->boxlo[0];
+    double xhi = domain->boxhi[0];
+    double ylo = domain->boxlo[1];
+    double yhi = domain->boxhi[1];
+    double zlo = domain->boxlo[2];
+    double zhi = domain->boxhi[2];
+
+    // Print the boundaries
+    printf("Domain boundaries:\n");
+    printf("xlo: %f, xhi: %f\n", xlo, xhi);
+    printf("ylo: %f, yhi: %f\n", ylo, yhi);
+    printf("zlo: %f, zhi: %f\n", zlo, zhi);
+
+
+    const int nx = static_cast<int>(xhi - xlo);
+    const int ny = static_cast<int>(yhi - ylo);
+    const int nz = static_cast<int>(zhi - zlo);
     IncomprFlowParam<T> parameters(
             uMax,
             Re,
@@ -443,18 +476,9 @@ int main(int argc, char* argv[]) {
             ny,        // ly
             nz         // lz
     );
-    const T maxT = atoi(argv[2]);//6.6e4; //(T)0.01;
-    plint iSave = atoi(argv[3]);//10;//2000;//10;
-    //plint iCheck = 10*iSave;
     writeLogFile(parameters, "3D square Poiseuille");
-
-    wrapper = new LammpsWrapper(argv,global::mpi().getGlobalCommunicator()); // replaced with MPI_COMM_WORLD
-    // LammpsWrapper wrapper(argv,MPI_COMM_WORLD);
-
-    char * inlmp = argv[1];
-    std::cout << "HERE--------" << std::endl;
-    wrapper->execFile(inlmp);
-    std::cout << "ASDFASDFASFAS" << std::endl;
+    
+    
    
     //MultiTensorField3D<T,3> vel(parameters.getNx(),parameters.getNy(),parameters.getNz());
     plint mysize = global::mpi().getSize();
@@ -527,9 +551,9 @@ int main(int argc, char* argv[]) {
 
     plint xc, yc, radius, iterationCAS, zLength, clotLoc;
 
-    xc = 20; // X center 
-    yc = 20; // Y center
-    radius = 20; // radius
+    xc = nx/2; // X center 
+    yc = ny/2; // Y center
+    radius = nx / 2; // radius
     T radiusNorm = radius/maxT; // double radius/max iterations
     iterationCAS = 10; // iterations for collideAndStream in the loop 
     zLength = parameters.getNz(); // because domain.z0 gives local value pass this instead.
@@ -612,70 +636,21 @@ int main(int argc, char* argv[]) {
         //cout<<"Rank: " << myrank <<" Velocity Norm Extents: " <<velocityNormArray.getNx() << " " << velocityNormArray.getNy() << " " << velocityNormArray.getNz()<<endl;
 #ifdef ENABLE_ASCENT
         if (iT%(iSave) ==0 && iT >0){
-        Bridge::getInstance().Publish(x, v, ntimestep, nghost ,nlocal, anglelist, nanglelist,
-                            velocityArray, vorticityArray, velocityNormArray, 
-                            nx, ny, nz, domain, envelopeWidth);
-            // std::cout << "Inserting a new RBC" << std::endl;
-            // double pt[] = {random_double(0.0, 20.0), random_double(0.0, 20.0), random_double(0.0, 20.0)};
-            // fixDepositString << "fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian "<<pt[0]<<" "<<pt[1]<<" "<< pt[2] << " 10 near 2 "<<endl;
-            // wrapper->execCommand(fixDepositString);
-            // fixDepositString.str("");
 
-                            /*
-        sensei::DataAdaptor *daOut = nullptr;
-        Bridge::Analyze(time++, &daOut);
-
-        double pt[3];
-
-            if (daOut) 
-            {
-                if (myrank == 0)
-                {
-                    sensei::MeshMetadataMap mdMap;
-                    mdMap.Initialize(daOut);
-                    sensei::MeshMetadataPtr mmd;
-                    mdMap.GetMeshMetadata("dataCollection", mmd);
-                    svtkDataObject* mesh = nullptr;
-                    daOut->GetMesh("dataCollection", false, mesh);
-                    daOut->AddArrays(mesh, "dataCollection", svtkDataObject::POINT, mmd->ArrayName);
-                    auto pd = svtkPolyData::SafeDownCast(svtkMultiBlockDataSet::SafeDownCast(mesh)->GetBlock(0));
-                    //double pt[3];
-                    pd->GetPoint(0, pt);
-                    // cout <<" -----------------------point " << pt[0] << " " << pt[1] << " " << pt[2] << endl;
-                    mesh->Delete();
-
-                    // wrapper->execCommand("fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian 10 10 5 15 near 4 ");
-                    
-                }
-                // broadcast the data to all ranks
-                // cout <<" before --------------------rank: "<<myrank<<" ---point " << pt[0] << " " << pt[1] << " " << pt[2] << endl;   
-            MPI_Bcast(&pt, 3, MPI_DOUBLE, 0, global::mpi().getGlobalCommunicator());
-            cout <<" --------------------rank: "<<myrank<<" ---point " << pt[0] << " " << pt[1] << " " << pt[2] << endl;    
-            // ADDED 7/6/2023 TISHCHENKO
-            // if (iT%iSave ==0 && iT >0){
-                //fixDepositString << "fix " << fixID <<" cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian "<<pt[0]<<" "<<pt[1]<<" "<< pt[2] << " 10 near 2" << endl;
-                 //fixDepositString<< "fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian 10 10 5 15 near 2" << endl;
-                
-                fixDepositString << "fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian "<<pt[0]<<" "<<pt[1]<<" "<< pt[2] << " 10 near 2 "<<endl;
-                //fixDepositString = "fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian "+ to_string(pt[0])+" "+ to_string(pt[1]) + " " + to_string(pt[2]) + " 10 near 2";// << endl;
-                // const string fixDeposit = fixDepositString.str().c_str();
-                //fixID++;
-                // cout << fixDepositString.str() << endl;
-                wrapper->execCommand(fixDepositString);
-                //clear fixDepositString
+            AscentBridge::getInstance().Publish(x, v, ntimestep, nghost ,nlocal, anglelist, nanglelist,
+                                velocityArray, vorticityArray, velocityNormArray, 
+                                nx, ny, nz, domain, envelopeWidth);
+            if(iT == 5) {
+                std::cout << "Inserting a new RBC" << std::endl;
+                int pt[] = {10, 10, 10};
+                fixDepositString << "fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian "<<pt[0]<<" "<<pt[1]<<" "<< pt[2] << " 1 near 2 "<<endl;
+                std::cout << "Deposit string: " << fixDepositString.str() << std::endl;
+                //fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian 10 10 10 10 near 2 # vz 10 20 
+                wrapper.execCommand(fixDepositString);
+                //wrapper.execCommand("fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian 10 10 5 10 near 2 ");// this is working, 7/6/2023 TISHCHENKO
                 fixDepositString.str("");
-            // }
-
-            // wrapper->execCommand("fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian 10 10 5 10 near 2 ");// this is working, 7/6/2023 TISHCHENKO
-            
-
-            // wrapper->execCommand("dump 1 cells xyz 1 dump.rbc.xyz");
-            daOut->ReleaseData();
-            daOut->Delete();
             }
- */
         }
-        // deposits a single molecule into the domain through use of fix deposit:
 #endif        
 
         // Clear and spread fluid force
@@ -686,7 +661,7 @@ int main(int argc, char* argv[]) {
         if(iT == 6) {
             std::cout << "New clot" << std::endl;
             //clotLoc = 1;
-            //radius = 10;
+            //radius = 15;
             modifyDynamicBoundaryFromDataProcessor(lattice, xc, yc, radius, radiusNorm, iT, zLength, clotLoc);
         }
         ////// Lattice Boltzmann iteration step.
@@ -710,7 +685,7 @@ int main(int argc, char* argv[]) {
     pcout<<"total execution time "<<timeduration<<endl;
     delete boundaryCondition;
 #ifdef ENABLE_ASCENT
-    Bridge::getInstance().Finalize();
+    AscentBridge::getInstance().Finalize();
 #endif
 }
 
