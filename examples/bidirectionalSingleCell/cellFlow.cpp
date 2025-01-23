@@ -35,6 +35,7 @@
 
 #include "mpi.h"
 #include "lammps.h"
+#include "domain.h"
 #include "input.h"
 #include "library.h"
 #include "lammpsWrapper.h"
@@ -319,7 +320,7 @@ private:
 void createDynamicBoundaryFromDataProcessor(
     MultiBlockLattice3D<T, DESCRIPTOR> &lattice, plint xc, plint yc, plint radius, T rn, plint zl, plint clotLoc) // removed 
 {
-    plint it = 50; // change back to 0 when finished debugging the bidirectional stuff and lammps domain stuff. 
+    plint it = 0; // change back to 0 when finished debugging the bidirectional stuff and lammps domain stuff. 
     applyProcessingFunctional(
         new DynamicBoundaryFunctional<T, DESCRIPTOR>(xc, yc, radius, rn, it, zl, clotLoc), lattice.getBoundingBox(),
         lattice);
@@ -389,9 +390,7 @@ int main(int argc, char* argv[]) {
     //const plint Nref = 50;
     //const T uMaxRef = 0.01;
     const T uMax = 0.00075;//uMaxRef /(T)N * (T)Nref; // Needed to avoid compressibility errors
-    const int nx = 30;
-    const int ny = 30;
-    const int nz = 80;
+
     //using namespace opts;
 
 #ifdef ENABLE_ASCENT
@@ -404,6 +403,37 @@ int main(int argc, char* argv[]) {
     >> Option('f', "config", config_file, "Sensei analysis configuration xml (required)")
     #endif
     */
+    
+    const T maxT = atoi(argv[2]);//6.6e4; //(T)0.01;
+    plint iSave = atoi(argv[3]);//10;//2000;//10;
+    //plint iCheck = 10*iSave;
+    
+
+    LammpsWrapper wrapper(argv,global::mpi().getGlobalCommunicator()); // replaced with MPI_COMM_WORLD
+    // LammpsWrapper wrapper(argv,MPI_COMM_WORLD);
+
+    char * inlmp = argv[1];
+    wrapper.execFile(inlmp);
+
+    LAMMPS_NS::Domain *domain = wrapper.lmp->domain;
+    // Get the simulation box boundaries
+    double xlo = domain->boxlo[0];
+    double xhi = domain->boxhi[0];
+    double ylo = domain->boxlo[1];
+    double yhi = domain->boxhi[1];
+    double zlo = domain->boxlo[2];
+    double zhi = domain->boxhi[2];
+
+    // Print the boundaries
+    printf("Domain boundaries:\n");
+    printf("xlo: %f, xhi: %f\n", xlo, xhi);
+    printf("ylo: %f, yhi: %f\n", ylo, yhi);
+    printf("zlo: %f, zhi: %f\n", zlo, zhi);
+
+
+    const int nx = static_cast<int>(xhi - xlo);
+    const int ny = static_cast<int>(yhi - ylo);
+    const int nz = static_cast<int>(zhi - zlo);
     IncomprFlowParam<T> parameters(
             uMax,
             Re,
@@ -412,18 +442,9 @@ int main(int argc, char* argv[]) {
             ny,        // ly
             nz         // lz
     );
-    const T maxT = atoi(argv[2]);//6.6e4; //(T)0.01;
-    plint iSave = atoi(argv[3]);//10;//2000;//10;
-    //plint iCheck = 10*iSave;
     writeLogFile(parameters, "3D square Poiseuille");
-
-    LammpsWrapper wrapper(argv,global::mpi().getGlobalCommunicator()); // replaced with MPI_COMM_WORLD
-    // LammpsWrapper wrapper(argv,MPI_COMM_WORLD);
-
-    char * inlmp = argv[1];
-    std::cout << "HERE--------" << std::endl;
-    wrapper.execFile(inlmp);
-    std::cout << "ASDFASDFASFAS" << std::endl;
+    
+    
    
     //MultiTensorField3D<T,3> vel(parameters.getNx(),parameters.getNy(),parameters.getNz());
     plint mysize = global::mpi().getSize();
@@ -496,9 +517,9 @@ int main(int argc, char* argv[]) {
 
     plint xc, yc, radius, iterationCAS, zLength, clotLoc;
 
-    xc = 20; // X center 
-    yc = 20; // Y center
-    radius = 20; // radius
+    xc = nx/2; // X center 
+    yc = ny/2; // Y center
+    radius = nx / 2; // radius
     T radiusNorm = radius/maxT; // double radius/max iterations
     iterationCAS = 10; // iterations for collideAndStream in the loop 
     zLength = parameters.getNz(); // because domain.z0 gives local value pass this instead.
@@ -585,9 +606,11 @@ int main(int argc, char* argv[]) {
                             velocityArray, vorticityArray, velocityNormArray, 
                             nx, ny, nz, domain, envelopeWidth);
         if(iT == 5) {
-            std::cout << "Imserting a new RBC" << std::endl;
-            double pt[] = {10.0, 10.0, 5.0};
-            fixDepositString << "fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian "<<pt[0]<<" "<<pt[1]<<" "<< pt[2] << " 10 near 2 "<<endl;
+            std::cout << "Inserting a new RBC" << std::endl;
+            int pt[] = {10, 10, 10};
+            fixDepositString << "fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian "<<pt[0]<<" "<<pt[1]<<" "<< pt[2] << " 1 near 2 "<<endl;
+            std::cout << "Deposit string: " << fixDepositString.str() << std::endl;
+            //fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian 10 10 10 10 near 2 # vz 10 20 
             wrapper.execCommand(fixDepositString);
             //wrapper.execCommand("fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian 10 10 5 10 near 2 ");// this is working, 7/6/2023 TISHCHENKO
             fixDepositString.str("");
@@ -659,7 +682,7 @@ int main(int argc, char* argv[]) {
         if(iT == 6) {
             std::cout << "New clot" << std::endl;
             //clotLoc = 1;
-            //radius = 10;
+            //radius = 15;
             modifyDynamicBoundaryFromDataProcessor(lattice, xc, yc, radius, radiusNorm, iT, zLength, clotLoc);
         }
         ////// Lattice Boltzmann iteration step.

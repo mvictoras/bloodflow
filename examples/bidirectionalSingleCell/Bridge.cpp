@@ -89,7 +89,7 @@ void Bridge::Publish  (double **x, double **v, long ntimestep, int nghost,
   mesh["fields/fluid_vorticity/values/y"].set(vorticity_y);
   mesh["fields/fluid_vorticity/values/z"].set(vorticity_z);
 
-  int nvals = nlocal+nghost;
+  int nvals = nlocal;//+nghost;
   mesh["coordsets/particle_coords/type"] = "explicit";
   mesh["coordsets/particle_coords/values/x"].set(conduit::DataType::float64(nvals));
   mesh["coordsets/particle_coords/values/y"].set(conduit::DataType::float64(nvals));
