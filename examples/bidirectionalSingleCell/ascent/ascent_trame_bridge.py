@@ -10,11 +10,11 @@ import conduit
 import numpy as np
 import yaml
 
-from mpi4py import MPI
+from vtkmodules.vtkCommonCore import vtkPoints
+from vtkmodules.vtkCommonDataModel import vtkCellArray, vtkPolyData
+from vtkmodules.vtkIOXML import vtkXMLPolyDataWriter
 
-sys.path.append(
-    f"../../.venv/lib/python{sys.version_info.major}.{sys.version_info.minor}/site-packages"
-)
+from mpi4py import MPI
 
 
 class QueueManager(BaseManager):
@@ -27,6 +27,29 @@ def main():
 
     # get task id and number of total tasks
     task_id = comm.Get_rank()
+
+    ###
+    # TEST
+    ###
+    # get published blueprint data
+    mesh_data = ascent_data().child(0)
+
+    x_coords = mesh_data['coordsets/particle_coords/values/x']
+    y_coords = mesh_data['coordsets/particle_coords/values/y']
+    z_coords = mesh_data['coordsets/particle_coords/values/z']
+    vertices = np.column_stack([x_coords, y_coords, z_coords])
+
+    faces = np.reshape(mesh_data['topologies/particle_topo/elements/connectivity'], (-1, 3))
+
+    poly_data = createTriangleVtkPolyData(vertices, faces)
+
+    writer = vtkXMLPolyDataWriter()
+    writer.SetFileName('ascent_rbc.vtp')
+    writer.SetInputData(poly_data)
+    writer.Write()
+    ###
+    # END: TEST
+    ###
 
     # run Trame tasks
     interactive = np.array([False], bool)
