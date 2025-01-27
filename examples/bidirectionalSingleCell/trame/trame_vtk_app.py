@@ -5,12 +5,12 @@ import queue
 from multiprocessing import Process, Queue
 from multiprocessing.managers import BaseManager
 
-from vtkmodules.vtkCommonCore import vtkPoints
+from vtkmodules.vtkCommonCore import vtkPoints, vtkDoubleArray, vtkUnsignedCharArray
 from vtkmodules.vtkCommonDataModel import vtkCellArray, vtkPolyData
 from vtkmodules.vtkRenderingCore import vtkRenderer, vtkRenderWindow, vtkRenderWindowInteractor, vtkPolyDataMapper, vtkActor 
 from vtkmodules.vtkInteractionStyle import vtkInteractorStyleSwitch  # noqa
 from vtkmodules.vtkFiltersSources import vtkConeSource
-from vtkmodules.vtkFiltersCore import vtkTriangleFilter
+from vtkmodules.vtkFiltersCore import vtkTubeFilter, vtkPolyDataNormals
 from vtkmodules.vtkIOXML import vtkXMLPolyDataWriter
 
 from trame.app import get_server, asynchronous
@@ -63,12 +63,53 @@ def runTrameServer(state_queue, update_queue):
     # create VTK render data
     vtk_data = {}
     vtk_data['renderer'] = vtkRenderer()
+    vtk_data['renderer'].SetBackground(0.2, 0.3, 0.4)
     vtk_data['renderWindow'] = vtkRenderWindow()
     vtk_data['renderWindow'].AddRenderer(vtk_data['renderer'])
 
     vtk_data['renderWindowInteractor'] = vtkRenderWindowInteractor()
     vtk_data['renderWindowInteractor'].SetRenderWindow(vtk_data['renderWindow'])
     vtk_data['renderWindowInteractor'].GetInteractorStyle().SetCurrentStyleToTrackballCamera()
+
+    num_vessel_points = 32
+    z_step = (80.0 - 0.0) / (num_vessel_points - 1)
+    vtk_data['vessel_points'] = vtkPoints()
+    for i in range(num_vessel_points):
+        z = 0.0 + (i * z_step)
+        vtk_data['vessel_points'].InsertNextPoint([16.0, 16.0, z])
+    vtk_data['vessel_center_line'] = vtkCellArray()
+    vtk_data['vessel_center_line'].InsertNextCell(num_vessel_points)
+    for i in range(num_vessel_points):
+        vtk_data['vessel_center_line'].InsertCellPoint(i)
+    vtk_data['vessel_polydata'] = vtkPolyData()
+    vtk_data['vessel_polydata'].SetPoints(vtk_data['vessel_points'])
+    vtk_data['vessel_polydata'].SetLines(vtk_data['vessel_center_line'])
+    vtk_data['vessel_radius'] = vtkDoubleArray()
+    vtk_data['vessel_radius'].SetName('TubeRadius')
+    vtk_data['vessel_radius'].SetNumberOfTuples(num_vessel_points)
+    vtk_data['vessel_colors'] = vtkUnsignedCharArray()
+    vtk_data['vessel_colors'].SetName('TubeColors')
+    vtk_data['vessel_colors'].SetNumberOfTuples(num_vessel_points)
+    vtk_data['vessel_colors'].SetNumberOfComponents(3)
+    for i in range(num_vessel_points):
+        vtk_data['vessel_radius'].SetTuple1(i, 18.0)
+        vtk_data['vessel_colors'].InsertTuple3(i, 255, 255, 255)
+    vtk_data['vessel_polydata'].GetPointData().AddArray(vtk_data['vessel_radius'])
+    vtk_data['vessel_polydata'].GetPointData().AddArray(vtk_data['vessel_colors'])
+    vtk_data['vessel_polydata'].GetPointData().SetActiveScalars('TubeRadius')
+    vtk_data['vessel_tube'] = vtkTubeFilter()
+    vtk_data['vessel_tube'].SetInputData(vtk_data['vessel_polydata'])
+    vtk_data['vessel_tube'].SetNumberOfSides(16)
+    vtk_data['vessel_tube'].SetVaryRadiusToVaryRadiusByAbsoluteScalar()
+    vtk_data['vessel_mapper'] = vtkPolyDataMapper()
+    vtk_data['vessel_actor'] = vtkActor()
+    vtk_data['vessel_mapper'].SetInputConnection(vtk_data['vessel_tube'].GetOutputPort())
+    vtk_data['vessel_mapper'].ScalarVisibilityOn()
+    vtk_data['vessel_mapper'].SetScalarModeToUsePointFieldData()
+    vtk_data['vessel_mapper'].SelectColorArray('TubeColors')
+    vtk_data['vessel_actor'].SetMapper(vtk_data['vessel_mapper'])
+    vtk_data['vessel_actor'].GetProperty().FrontfaceCullingOn()
+    vtk_data['renderer'].AddActor(vtk_data['vessel_actor'])
 
     vertices = [[7.0, 7.0, 18.5], [25.0, 7.0, 36.1], [16.0, 25.0, 27.3]] # array of 3D points
     faces = [[0, 1, 2]] # array of triangles - each triangle has 3 vertex indices
@@ -142,44 +183,20 @@ async def checkForStateUpdates(state, state_queue, update_queue, vtk_data):
             vtk_data['renderer'].RemoveActor(vtk_data['actor'])
 
             vtk_data['polyData'] = createTriangleVtkPolyData(state_data['vertices'], state_data['faces'])
-            #vertices = [[-0.3, -0.5, 0.0], [0.7, -0.5, 0.0], [0.2, 0.5, 0.0]] # array of 3D points
-            #faces = [[0, 1, 2]] # array of triangles - each triangle has 3 vertex indices
-            #vtk_data['polyData'] = createTriangleVtkPolyData(vertices, faces)
 
-
-            min_x = 9.9e12
-            max_x = -9.9e12
-            min_y = 9.9e12
-            max_y = -9.9e12
-            min_z = 9.9e12
-            max_z = -9.9e12
-            for v in state_data['vertices']:
-                min_x = min(min_x, v[0])
-                max_x = max(max_x, v[0])
-                min_y = min(min_y, v[1])
-                max_y = max(max_y, v[1])
-                min_z = min(min_z, v[2])
-                max_z = max(max_z, v[2])
-            print(f'bounds: X {min_x}, {max_x}; Y {min_y}, {max_y}; Z {min_z}, {max_z};')
-
+            # maybe?
+            #vtk_data['polyDataSmooth'] = vtkPolyDataNormals()
+            #vtk_data['polyDataSmooth'].SetInputData(vtk_data['polyData'])
 
             vtk_data['mapper'] = vtkPolyDataMapper()
             vtk_data['actor'] = vtkActor()
             vtk_data['mapper'].SetInputData(vtk_data['polyData'])
+            #vtk_data['mapper'].SetInputConnection(vtk_data['polyDataSmooth'].GetOutputPort())
             vtk_data['actor'].SetMapper(vtk_data['mapper'])
+            vtk_data['actor'].GetProperty().SetColor(0.68, 0.05, 0.05)
             vtk_data['renderer'].AddActor(vtk_data['actor'])
-            vtk_data['renderer'].ResetCamera()
            
-            print('UPDATE POLYDATA')
- 
-            #writer = vtkXMLPolyDataWriter()
-            #writer.SetFileName('ascent_rbc.vtp')
-            #writer.SetInputData(vtk_data['polyData'])
-            #writer.Write()
-
-            vtk_data['trame_view'].reset_camera()
             vtk_data['trame_view'].update()
-            vtk_data['trame_view'].reset_camera()
 
             if not state.enable_steering:
                 update_queue.put({})
