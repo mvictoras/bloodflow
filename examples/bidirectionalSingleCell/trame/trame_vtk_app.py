@@ -10,7 +10,7 @@ from vtkmodules.vtkCommonDataModel import vtkCellArray, vtkPolyData
 from vtkmodules.vtkRenderingCore import vtkRenderer, vtkRenderWindow, vtkRenderWindowInteractor, vtkPolyDataMapper, vtkActor 
 from vtkmodules.vtkInteractionStyle import vtkInteractorStyleSwitch  # noqa
 from vtkmodules.vtkFiltersSources import vtkConeSource
-from vtkmodules.vtkFiltersCore import vtkTubeFilter, vtkPolyDataNormals
+from vtkmodules.vtkFiltersCore import vtkTubeFilter, vtkCleanPolyData, vtkPolyDataNormals
 from vtkmodules.vtkIOXML import vtkXMLPolyDataWriter
 
 from trame.app import get_server, asynchronous
@@ -183,14 +183,16 @@ async def checkForStateUpdates(state, state_queue, update_queue, vtk_data):
             vtk_data['renderer'].RemoveActor(vtk_data['actor'])
 
             vtk_data['polyData'] = createTriangleVtkPolyData(state_data['vertices'], state_data['faces'])
+            vtk_data['polyDataClean'] = vtkCleanPolyData()
+            vtk_data['polyDataClean'].SetInputData(vtk_data['polyData'])
 
             # maybe?
             #vtk_data['polyDataSmooth'] = vtkPolyDataNormals()
-            #vtk_data['polyDataSmooth'].SetInputData(vtk_data['polyData'])
+            #vtk_data['polyDataSmooth'].SetInputConnection(vtk_data['polyDataClean'].GetOutputPort())
 
             vtk_data['mapper'] = vtkPolyDataMapper()
             vtk_data['actor'] = vtkActor()
-            vtk_data['mapper'].SetInputData(vtk_data['polyData'])
+            vtk_data['mapper'].SetInputConnection(vtk_data['polyDataClean'].GetOutputPort())
             #vtk_data['mapper'].SetInputConnection(vtk_data['polyDataSmooth'].GetOutputPort())
             vtk_data['actor'].SetMapper(vtk_data['mapper'])
             vtk_data['actor'].GetProperty().SetColor(0.68, 0.05, 0.05)
