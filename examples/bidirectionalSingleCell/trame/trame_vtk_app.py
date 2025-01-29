@@ -5,13 +5,17 @@ import queue
 from multiprocessing import Process, Queue
 from multiprocessing.managers import BaseManager
 
+from PIL import Image
+
 from vtkmodules.vtkCommonCore import vtkPoints, vtkDoubleArray, vtkUnsignedCharArray
-from vtkmodules.vtkCommonDataModel import vtkCellArray, vtkPolyData
-from vtkmodules.vtkRenderingCore import vtkRenderer, vtkRenderWindow, vtkRenderWindowInteractor, vtkPolyDataMapper, vtkActor 
-from vtkmodules.vtkInteractionStyle import vtkInteractorStyleSwitch  # noqa
-from vtkmodules.vtkFiltersSources import vtkConeSource
+from vtkmodules.vtkCommonDataModel import vtkCellArray, vtkPolyData, vtkDataObject
+from vtkmodules.vtkRenderingCore import (vtkRenderer, vtkRenderWindow, vtkRenderWindowInteractor,
+                                         vtkTexture, vtkPolyDataMapper, vtkActor) 
+from vtkmodules.vtkFiltersSources import vtkPlaneSource
 from vtkmodules.vtkFiltersCore import vtkTubeFilter, vtkCleanPolyData, vtkPolyDataNormals
+from vtkmodules.vtkIOImage import vtkPNGReader
 from vtkmodules.vtkIOXML import vtkXMLPolyDataWriter
+from vtkmodules.vtkInteractionStyle import vtkInteractorStyleSwitch  # noqa
 
 from trame.app import get_server, asynchronous
 from trame.widgets import vuetify, vtk as vtk_widgets
@@ -76,7 +80,7 @@ def runTrameServer(state_queue, update_queue):
     vtk_data['vessel_points'] = vtkPoints()
     for i in range(num_vessel_points):
         z = 0.0 + (i * z_step)
-        vtk_data['vessel_points'].InsertNextPoint([16.0, 16.0, z])
+        vtk_data['vessel_points'].InsertNextPoint([15.0, 15.0, z])
     vtk_data['vessel_center_line'] = vtkCellArray()
     vtk_data['vessel_center_line'].InsertNextCell(num_vessel_points)
     for i in range(num_vessel_points):
@@ -92,14 +96,14 @@ def runTrameServer(state_queue, update_queue):
     vtk_data['vessel_colors'].SetNumberOfTuples(num_vessel_points)
     vtk_data['vessel_colors'].SetNumberOfComponents(3)
     for i in range(num_vessel_points):
-        vtk_data['vessel_radius'].SetTuple1(i, 18.0)
+        vtk_data['vessel_radius'].SetTuple1(i, 15.0)
         vtk_data['vessel_colors'].InsertTuple3(i, 255, 255, 255)
     vtk_data['vessel_polydata'].GetPointData().AddArray(vtk_data['vessel_radius'])
     vtk_data['vessel_polydata'].GetPointData().AddArray(vtk_data['vessel_colors'])
     vtk_data['vessel_polydata'].GetPointData().SetActiveScalars('TubeRadius')
     vtk_data['vessel_tube'] = vtkTubeFilter()
     vtk_data['vessel_tube'].SetInputData(vtk_data['vessel_polydata'])
-    vtk_data['vessel_tube'].SetNumberOfSides(16)
+    vtk_data['vessel_tube'].SetNumberOfSides(24)
     vtk_data['vessel_tube'].SetVaryRadiusToVaryRadiusByAbsoluteScalar()
     vtk_data['vessel_mapper'] = vtkPolyDataMapper()
     vtk_data['vessel_actor'] = vtkActor()
@@ -110,6 +114,26 @@ def runTrameServer(state_queue, update_queue):
     vtk_data['vessel_actor'].SetMapper(vtk_data['vessel_mapper'])
     vtk_data['vessel_actor'].GetProperty().FrontfaceCullingOn()
     vtk_data['renderer'].AddActor(vtk_data['vessel_actor'])
+
+    vtk_data['fluid_yz_plane'] = vtkPlaneSource()
+    vtk_data['fluid_yz_plane'].SetOrigin(15.0, 0.0, 0.0)
+    vtk_data['fluid_yz_plane'].SetPoint1(15.0, 0.0, 80.0)
+    vtk_data['fluid_yz_plane'].SetPoint2(15.0, 30.0, 0.0)
+    vtk_data['fluid_yz_mapper'] = vtkPolyDataMapper()
+    vtk_data['fluid_yz_actor'] = vtkActor()
+    vtk_data['fluid_yz_mapper'].SetInputConnection(vtk_data['fluid_yz_plane'].GetOutputPort())
+    vtk_data['fluid_yz_actor'].SetMapper(vtk_data['fluid_yz_mapper'])
+    vtk_data['renderer'].AddActor(vtk_data['fluid_yz_actor'])
+
+    vtk_data['fluid_xz_plane'] = vtkPlaneSource()
+    vtk_data['fluid_xz_plane'].SetOrigin(0.0, 15.0, 0.0)
+    vtk_data['fluid_xz_plane'].SetPoint1(0.0, 15.0, 80.0)
+    vtk_data['fluid_xz_plane'].SetPoint2(30.0, 15.0, 0.0)
+    vtk_data['fluid_xz_mapper'] = vtkPolyDataMapper()
+    vtk_data['fluid_xz_actor'] = vtkActor()
+    vtk_data['fluid_xz_mapper'].SetInputConnection(vtk_data['fluid_xz_plane'].GetOutputPort())
+    vtk_data['fluid_xz_actor'].SetMapper(vtk_data['fluid_xz_mapper'])
+    vtk_data['renderer'].AddActor(vtk_data['fluid_xz_actor'])
 
     vertices = [[7.0, 7.0, 18.5], [25.0, 7.0, 36.1], [16.0, 25.0, 27.3]] # array of 3D points
     faces = [[0, 1, 2]] # array of triangles - each triangle has 3 vertex indices
@@ -180,11 +204,17 @@ async def checkForStateUpdates(state, state_queue, update_queue, vtk_data):
             if state.enable_steering:
                 state.allow_submit = True
 
+            #old_actors = [
+            #    vtk_data['actor'],
+            #    vtk_data['fluid_yz_actor']
+            #]
             vtk_data['renderer'].RemoveActor(vtk_data['actor'])
+            vtk_data['renderer'].RemoveActor(vtk_data['fluid_yz_actor'])
+            vtk_data['renderer'].RemoveActor(vtk_data['fluid_xz_actor'])
 
             vtk_data['polyData'] = createTriangleVtkPolyData(state_data['vertices'], state_data['faces'])
-            vtk_data['polyDataClean'] = vtkCleanPolyData()
-            vtk_data['polyDataClean'].SetInputData(vtk_data['polyData'])
+            #vtk_data['polyDataClean'] = vtkCleanPolyData()
+            #vtk_data['polyDataClean'].SetInputData(vtk_data['polyData'])
 
             # maybe?
             #vtk_data['polyDataSmooth'] = vtkPolyDataNormals()
@@ -192,12 +222,31 @@ async def checkForStateUpdates(state, state_queue, update_queue, vtk_data):
 
             vtk_data['mapper'] = vtkPolyDataMapper()
             vtk_data['actor'] = vtkActor()
-            vtk_data['mapper'].SetInputConnection(vtk_data['polyDataClean'].GetOutputPort())
+            vtk_data['mapper'].SetInputData(vtk_data['polyData'])
+            #vtk_data['mapper'].SetInputConnection(vtk_data['polyDataClean'].GetOutputPort())
             #vtk_data['mapper'].SetInputConnection(vtk_data['polyDataSmooth'].GetOutputPort())
             vtk_data['actor'].SetMapper(vtk_data['mapper'])
             vtk_data['actor'].GetProperty().SetColor(0.68, 0.05, 0.05)
             vtk_data['renderer'].AddActor(vtk_data['actor'])
-           
+
+            fluid_yz_tex = createVtkTextureFromImage('../fluid_vel_mag_yz.png')
+            #vtk_data['fluid_yz_mapper'] = vtkPolyDataMapper()
+            vtk_data['fluid_yz_actor'] = vtkActor()
+            #vtk_data['fluid_yz_mapper'].SetInputConnection(vtk_data['fluid_yz_plane'].GetOutputPort())
+            vtk_data['fluid_yz_actor'].SetMapper(vtk_data['fluid_yz_mapper'])
+            vtk_data['fluid_yz_actor'].SetTexture(fluid_yz_tex)
+            vtk_data['fluid_yz_actor'].GetProperty().SetOpacity(0.3)
+            vtk_data['renderer'].AddActor(vtk_data['fluid_yz_actor'])
+
+            fluid_xz_tex = createVtkTextureFromImage('../fluid_vel_mag_xz.png')
+            #vtk_data['fluid_xz_mapper'] = vtkPolyDataMapper()
+            vtk_data['fluid_xz_actor'] = vtkActor()
+            #vtk_data['fluid_xz_mapper'].SetInputConnection(vtk_data['fluid_xz_plane'].GetOutputPort())
+            vtk_data['fluid_xz_actor'].SetMapper(vtk_data['fluid_xz_mapper'])
+            vtk_data['fluid_xz_actor'].SetTexture(fluid_xz_tex)
+            vtk_data['fluid_xz_actor'].GetProperty().SetOpacity(0.3)
+            vtk_data['renderer'].AddActor(vtk_data['fluid_xz_actor'])
+
             vtk_data['trame_view'].update()
 
             if not state.enable_steering:
@@ -239,6 +288,33 @@ def createTriangleVtkPolyData(vertices, faces):
     polydata.SetPolys(triangles)
 
     return polydata
+
+
+def createVtkTextureFromImage(filename):
+    image_reader = vtkPNGReader()
+    image_reader.SetFileName(filename)
+    image_reader.Update()   
+ 
+    #image_data = image_reader.GetOutput()
+    #image = Image.open(filename)
+
+    #image_data = vtkImageData()
+    #image_data.SetDimensions(image.size[0], image.size[1], 1)
+    #image_data.SetSpacing(1, 1, 1)
+    #image_data.SetOrigin(0, 0, 0)
+    #if image.mode == 'RGBA':
+    #    image_data.SetNumberOfScalarComponents(4)
+    #else:
+    #    image_data.SetNumberOfScalarComponents(3)
+    #image_data.SetScalarTypeToUnsignedChar()
+    #image_data.GetPointData().GetScalars().SetVoidArray(image.tobytes(), image.size[0] * image.size[1] * len(image.mode), 1)
+
+    texture = vtkTexture()
+    texture.SetInputConnection(image_reader.GetOutputPort())
+    texture.InterpolateOn()
+
+    return texture
+
 
 if __name__ == '__main__':
     main()
