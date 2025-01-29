@@ -235,7 +235,7 @@ async def checkForStateUpdates(state, state_queue, update_queue, vtk_data):
             #vtk_data['fluid_yz_mapper'].SetInputConnection(vtk_data['fluid_yz_plane'].GetOutputPort())
             vtk_data['fluid_yz_actor'].SetMapper(vtk_data['fluid_yz_mapper'])
             vtk_data['fluid_yz_actor'].SetTexture(fluid_yz_tex)
-            vtk_data['fluid_yz_actor'].GetProperty().SetOpacity(0.3)
+            vtk_data['fluid_yz_actor'].GetProperty().SetOpacity(0.6)
             vtk_data['renderer'].AddActor(vtk_data['fluid_yz_actor'])
 
             fluid_xz_tex = createVtkTextureFromImage('../fluid_vel_mag_xz.png')
@@ -244,7 +244,7 @@ async def checkForStateUpdates(state, state_queue, update_queue, vtk_data):
             #vtk_data['fluid_xz_mapper'].SetInputConnection(vtk_data['fluid_xz_plane'].GetOutputPort())
             vtk_data['fluid_xz_actor'].SetMapper(vtk_data['fluid_xz_mapper'])
             vtk_data['fluid_xz_actor'].SetTexture(fluid_xz_tex)
-            vtk_data['fluid_xz_actor'].GetProperty().SetOpacity(0.3)
+            vtk_data['fluid_xz_actor'].GetProperty().SetOpacity(0.6)
             vtk_data['renderer'].AddActor(vtk_data['fluid_xz_actor'])
 
             vtk_data['trame_view'].update()
