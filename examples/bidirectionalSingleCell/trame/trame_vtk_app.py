@@ -7,8 +7,8 @@ from multiprocessing.managers import BaseManager
 
 from PIL import Image
 
-from vtkmodules.vtkCommonCore import vtkPoints, vtkDoubleArray, vtkUnsignedCharArray
-from vtkmodules.vtkCommonDataModel import vtkCellArray, vtkPolyData, vtkDataObject
+from vtkmodules.vtkCommonCore import vtkPoints, vtkDoubleArray, vtkUnsignedCharArray, VTK_UNSIGNED_CHAR
+from vtkmodules.vtkCommonDataModel import vtkCellArray, vtkPolyData, vtkDataObject, vtkImageData
 from vtkmodules.vtkRenderingCore import (vtkRenderer, vtkRenderWindow, vtkRenderWindowInteractor,
                                          vtkTexture, vtkPolyDataMapper, vtkActor) 
 from vtkmodules.vtkFiltersSources import vtkPlaneSource
@@ -17,8 +17,11 @@ from vtkmodules.vtkIOImage import vtkPNGReader
 from vtkmodules.vtkIOXML import vtkXMLPolyDataWriter
 from vtkmodules.vtkInteractionStyle import vtkInteractorStyleSwitch  # noqa
 
+from vtkmodules.util import numpy_support
+
 from trame.app import get_server, asynchronous
-from trame.widgets import vuetify, vtk as vtk_widgets
+#from trame.widgets import vuetify, vtk as vtk_widgets
+from trame.widgets import vuetify, vtklocal as vtk_widgets
 from trame.ui.vuetify import SinglePageLayout
 
 
@@ -116,9 +119,9 @@ def runTrameServer(state_queue, update_queue):
     vtk_data['renderer'].AddActor(vtk_data['vessel_actor'])
 
     vtk_data['fluid_yz_plane'] = vtkPlaneSource()
-    vtk_data['fluid_yz_plane'].SetOrigin(15.0, 0.0, 0.0)
-    vtk_data['fluid_yz_plane'].SetPoint1(15.0, 0.0, 80.0)
-    vtk_data['fluid_yz_plane'].SetPoint2(15.0, 30.0, 0.0)
+    vtk_data['fluid_yz_plane'].SetOrigin(15.0, 0.0, 80.0)
+    vtk_data['fluid_yz_plane'].SetPoint1(15.0, 0.0, 0.0)
+    vtk_data['fluid_yz_plane'].SetPoint2(15.0, 30.0, 80.0)
     vtk_data['fluid_yz_mapper'] = vtkPolyDataMapper()
     vtk_data['fluid_yz_actor'] = vtkActor()
     vtk_data['fluid_yz_mapper'].SetInputConnection(vtk_data['fluid_yz_plane'].GetOutputPort())
@@ -160,6 +163,12 @@ def runTrameServer(state_queue, update_queue):
         if not enable_steering:
             update_queue.put({})
 
+    # callback for slice opacity slider
+    def uiStateUpdateSliceOpacity(slice_opacity, **kwargs):
+        vtk_data['fluid_yz_actor'].GetProperty().SetOpacity(slice_opacity)
+        vtk_data['fluid_xz_actor'].GetProperty().SetOpacity(slice_opacity)
+        vtk_data['trame_view'].update()
+
     # callback for clicking submit button
     def submitSteeringOptions():
         steering_data = {}
@@ -167,6 +176,7 @@ def runTrameServer(state_queue, update_queue):
 
     # register callbacks
     state.change('enable_steering')(uiStateEnableSteeringUpdate)
+    state.change('slice_opacity')(uiStateUpdateSliceOpacity)
 
     # define webpage layout
     state.allow_submit = False
@@ -181,6 +191,19 @@ def runTrameServer(state_queue, update_queue):
                 dense=True
             )
             vuetify.VSpacer()
+            vuetify.VSlider(
+                label='Slice Opacity',
+                v_model=('slice_opacity', 0.5),
+                min=0.0,
+                max=1.0,
+                step=0.05,
+                hide_details=True,
+                dense=True
+            )
+            vuetify.VCol(
+                '{{slice_opacity.toFixed(2)}}'
+            )
+            vuetify.VSpacer()
             vuetify.VBtn(
                 'Submit',
                 color='primary',
@@ -189,8 +212,10 @@ def runTrameServer(state_queue, update_queue):
             )
         with layout.content:
             with vuetify.VContainer(fluid=True, classes='pa-0 fill-height'):
-                vtk_data['trame_view'] = vtk_widgets.VtkLocalView(vtk_data['renderWindow'], ref='view')
+                #vtk_data['trame_view'] = vtk_widgets.VtkLocalView(vtk_data['renderWindow'], ref='view')
+                vtk_data['trame_view'] = vtk_widgets.LocalView(vtk_data['renderWindow'], ref='view')
                 vtk_data['trame_view'].reset_camera()
+
     # start Trame server
     server.start()
 
@@ -201,13 +226,11 @@ async def checkForStateUpdates(state, state_queue, update_queue, vtk_data):
             state_data = state_queue.get(block=False)
            
             state.connected = True
+            
+            print(f'connected: steering={state.enable_steering}')
             if state.enable_steering:
                 state.allow_submit = True
 
-            #old_actors = [
-            #    vtk_data['actor'],
-            #    vtk_data['fluid_yz_actor']
-            #]
             vtk_data['renderer'].RemoveActor(vtk_data['actor'])
             vtk_data['renderer'].RemoveActor(vtk_data['fluid_yz_actor'])
             vtk_data['renderer'].RemoveActor(vtk_data['fluid_xz_actor'])
@@ -229,22 +252,34 @@ async def checkForStateUpdates(state, state_queue, update_queue, vtk_data):
             vtk_data['actor'].GetProperty().SetColor(0.68, 0.05, 0.05)
             vtk_data['renderer'].AddActor(vtk_data['actor'])
 
-            fluid_yz_tex = createVtkTextureFromImage('../fluid_vel_mag_yz.png')
-            #vtk_data['fluid_yz_mapper'] = vtkPolyDataMapper()
+            vtk_data['image_reader_yz'] = vtkPNGReader()
+            vtk_data['image_reader_yz'].SetFileName('../fluid_vel_mag_yz.png')
+            vtk_data['image_reader_yz'].Update()
+
+            vtk_data['fluid_yz_tex'] = vtkTexture()
+            vtk_data['fluid_yz_tex'].SetInputConnection(vtk_data['image_reader_yz'].GetOutputPort())
+            vtk_data['fluid_yz_tex'].InterpolateOn()
+
+            #fluid_yz_tex = createVtkTextureFromImage('../fluid_vel_mag_yz.png')
             vtk_data['fluid_yz_actor'] = vtkActor()
-            #vtk_data['fluid_yz_mapper'].SetInputConnection(vtk_data['fluid_yz_plane'].GetOutputPort())
             vtk_data['fluid_yz_actor'].SetMapper(vtk_data['fluid_yz_mapper'])
-            vtk_data['fluid_yz_actor'].SetTexture(fluid_yz_tex)
-            vtk_data['fluid_yz_actor'].GetProperty().SetOpacity(0.6)
+            vtk_data['fluid_yz_actor'].SetTexture(vtk_data['fluid_yz_tex'])
+            vtk_data['fluid_yz_actor'].GetProperty().SetOpacity(state.slice_opacity)
             vtk_data['renderer'].AddActor(vtk_data['fluid_yz_actor'])
 
-            fluid_xz_tex = createVtkTextureFromImage('../fluid_vel_mag_xz.png')
-            #vtk_data['fluid_xz_mapper'] = vtkPolyDataMapper()
+            vtk_data['image_reader_xz'] = vtkPNGReader()
+            vtk_data['image_reader_xz'].SetFileName('../fluid_vel_mag_xz.png')
+            vtk_data['image_reader_xz'].Update()
+
+            vtk_data['fluid_xz_tex'] = vtkTexture()
+            vtk_data['fluid_xz_tex'].SetInputConnection(vtk_data['image_reader_xz'].GetOutputPort())
+            vtk_data['fluid_xz_tex'].InterpolateOn()
+
+            #fluid_xz_tex = createVtkTextureFromImage('../fluid_vel_mag_xz.png')
             vtk_data['fluid_xz_actor'] = vtkActor()
-            #vtk_data['fluid_xz_mapper'].SetInputConnection(vtk_data['fluid_xz_plane'].GetOutputPort())
             vtk_data['fluid_xz_actor'].SetMapper(vtk_data['fluid_xz_mapper'])
-            vtk_data['fluid_xz_actor'].SetTexture(fluid_xz_tex)
-            vtk_data['fluid_xz_actor'].GetProperty().SetOpacity(0.6)
+            vtk_data['fluid_xz_actor'].SetTexture(vtk_data['fluid_xz_tex'])
+            vtk_data['fluid_xz_actor'].GetProperty().SetOpacity(state.slice_opacity)
             vtk_data['renderer'].AddActor(vtk_data['fluid_xz_actor'])
 
             vtk_data['trame_view'].update()
@@ -291,27 +326,15 @@ def createTriangleVtkPolyData(vertices, faces):
 
 
 def createVtkTextureFromImage(filename):
+    print(f'loading PNG: {filename}')
     image_reader = vtkPNGReader()
     image_reader.SetFileName(filename)
     image_reader.Update()   
  
-    #image_data = image_reader.GetOutput()
-    #image = Image.open(filename)
-
-    #image_data = vtkImageData()
-    #image_data.SetDimensions(image.size[0], image.size[1], 1)
-    #image_data.SetSpacing(1, 1, 1)
-    #image_data.SetOrigin(0, 0, 0)
-    #if image.mode == 'RGBA':
-    #    image_data.SetNumberOfScalarComponents(4)
-    #else:
-    #    image_data.SetNumberOfScalarComponents(3)
-    #image_data.SetScalarTypeToUnsignedChar()
-    #image_data.GetPointData().GetScalars().SetVoidArray(image.tobytes(), image.size[0] * image.size[1] * len(image.mode), 1)
-
     texture = vtkTexture()
     texture.SetInputConnection(image_reader.GetOutputPort())
     texture.InterpolateOn()
+    texture.Update()
 
     return texture
 
