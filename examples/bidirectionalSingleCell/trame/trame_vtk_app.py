@@ -312,11 +312,20 @@ def createTriangleVtkPolyData(vertices, faces):
     for v in vertices:
         points.InsertNextPoint(v)
 
+    max_sqr_dist = 40.0 * 40.0
     triangles = vtkCellArray()
     for f in faces:
-        triangles.InsertNextCell(3)
-        for i in f:
-            triangles.InsertCellPoint(i)
+        if f[0] >= len(vertices) or f[1] >= len(vertices) or f[2] >= len(vertices):
+            print(f'bad face: {f}')
+        else:
+            d01 = sqrDistance3d(vertices[f[0]], vertices[f[1]])
+            d02 = sqrDistance3d(vertices[f[0]], vertices[f[2]])
+            d12 = sqrDistance3d(vertices[f[1]], vertices[f[2]])
+            if d01 < max_sqr_dist and d02 < max_sqr_dist and d12 < max_sqr_dist:
+                triangles.InsertNextCell(3)
+                triangles.InsertCellPoint(f[0])
+                triangles.InsertCellPoint(f[1])
+                triangles.InsertCellPoint(f[2])
 
     polydata = vtkPolyData()
     polydata.SetPoints(points)
@@ -338,6 +347,11 @@ def createVtkTextureFromImage(filename):
 
     return texture
 
+def sqrDistance3d(p0, p1):
+    dx = p1[0] - p0[0]
+    dy = p1[1] - p0[1]
+    dz = p1[2] - p0[2]
+    return (dx * dx) + (dy * dy) + (dz * dz)
 
 if __name__ == '__main__':
     main()
