@@ -1,0 +1,44 @@
+-
+  action: "add_pipelines"
+  pipelines: 
+    pl1: 
+      f1: 
+        type: "vector_magnitude"
+        params: 
+          field: "fluid_velocity"
+          output_name: "fluid_vel_mag"
+      f2: 
+        type: "slice"
+        params: 
+          topology: fluid_topo
+          point: 
+            x: 15
+            y: 0
+            z: 0
+          normal: 
+            x: 1.0
+            y: 0.0
+            z: 0.0
+- 
+  action: add_scenes
+  scenes:
+    wire_scene:
+      plots:
+        p1:
+          type: pseudocolor
+          field: particle_velocity_magnitude
+        p2:
+          type: pseudocolor
+          field: fluid_vel_mag
+          pipeline: pl1
+      renders:
+        r1:
+          image_prefix: wireframe_mesh_%06d
+          camera:
+            look_at: [15, 15, 40]
+            up: [0, 1, 0]
+            position: [70, 15, 40]
+          image_width: 1920
+          image_height: 1080
+          world_annotations: false
+          screen_annotations: false
