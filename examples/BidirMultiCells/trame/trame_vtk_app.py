@@ -312,7 +312,7 @@ def createTriangleVtkPolyData(vertices, faces):
     for v in vertices:
         points.InsertNextPoint(v)
 
-    max_sqr_dist = 40.0 * 40.0
+    max_sqr_dist = 75.0 * 75.0
     triangles = vtkCellArray()
     for f in faces:
         if f[0] >= len(vertices) or f[1] >= len(vertices) or f[2] >= len(vertices):

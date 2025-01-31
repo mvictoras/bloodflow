@@ -66,6 +66,12 @@ configure_file(
 )
 
 configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/slices.yaml"
+    "${CMAKE_CURRENT_BINARY_DIR}/slices.yaml"
+    COPYONLY
+)
+
+configure_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/ascent/ascent_trame_bridge.py"
     "${CMAKE_CURRENT_BINARY_DIR}/ascent/ascent_trame_bridge.py"
     COPYONLY
@@ -74,5 +80,11 @@ configure_file(
 configure_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/trame/trame_app.py"
     "${CMAKE_CURRENT_BINARY_DIR}/trame/trame_app.py"
+    COPYONLY
+)
+
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/trame/trame_vtk_app.py"
+    "${CMAKE_CURRENT_BINARY_DIR}/trame/trame_vtk_app.py"
     COPYONLY
 )

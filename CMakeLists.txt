@@ -25,6 +25,7 @@ include(FetchContent)
 option(FETCH_PALABOS "Download and manage Palabos via FetchContent" ON)
 option(FETCH_LAMMPS  "Download and manage LAMMPS via ExternalProject" ON)
 option(BUILD_EXAMPLE_SINGLECELL  "Build SingleCell Example" ON)
+option(BUILD_EXAMPLE_BIDIRMULTICELLS  "Build BidirMultiCells Example" ON)
 option(BUILD_EXAMPLE_BIDIRECTIONAL_SINGLECELL "Build Bidirectional SingleCell Example" ON)
 option(ENABLE_ASCENT  "Ascent ENABLED" ON)
 
@@ -208,6 +209,10 @@ set_property(TARGET lammps PROPERTY
 ###
 if(BUILD_EXAMPLE_SINGLECELL)
   add_subdirectory(examples/singleCell)
+endif()
+
+if(BUILD_EXAMPLE_BIDIRMULTICELLS)
+  add_subdirectory(examples/BidirMultiCells)
 endif()
 
 if(BUILD_EXAMPLE_BIDIRECTIONAL_SINGLECELL)
