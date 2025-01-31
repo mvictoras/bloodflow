@@ -1,0 +1,48 @@
+-
+  action: "add_pipelines"
+  pipelines: 
+    pl1: 
+      f1: 
+        type: "vector_magnitude"
+        params: 
+          field: "fluid_velocity"
+          output_name: "fluid_vel_mag"
+      f2: 
+        type: "slice"
+        params: 
+          topology: fluid_topo
+          point: 
+            x: 15
+            y: 0
+            z: 0
+          normal: 
+            x: 1.0
+            y: 0.0
+            z: 0.0
+- 
+  action: add_scenes
+  scenes:
+    wire_scene:
+      plots:
+        p1:
+          type: pseudocolor
+          field: particle_velocity_magnitude
+        p2:
+          type: pseudocolor
+          field: fluid_vel_mag
+          pipeline: pl1
+      renders:
+        r1:
+          annotations: 'false'
+          camera:
+            zoom: 2.0
+          db_name: ascent-trame
+          dphi: 90.0
+          dtheta: 90.0
+          phi_range:
+          - -180.0
+          - 180.0
+          theta_range:
+          - 0.0
+          - 180.0
+          type: cinema
