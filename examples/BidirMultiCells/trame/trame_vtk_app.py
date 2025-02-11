@@ -24,6 +24,7 @@ from trame.app import get_server, asynchronous
 from trame.widgets import vuetify, vtklocal as vtk_widgets
 from trame.ui.vuetify import SinglePageLayout
 
+DIMS = {'x': 90.0, 'y': 90.0, 'z': 150.0}
 
 class QueueManager(BaseManager):
     pass
@@ -79,11 +80,11 @@ def runTrameServer(state_queue, update_queue):
     vtk_data['renderWindowInteractor'].GetInteractorStyle().SetCurrentStyleToTrackballCamera()
 
     num_vessel_points = 32
-    z_step = (80.0 - 0.0) / (num_vessel_points - 1)
+    z_step = DIMS['z'] / (num_vessel_points - 1)
     vtk_data['vessel_points'] = vtkPoints()
     for i in range(num_vessel_points):
-        z = 0.0 + (i * z_step)
-        vtk_data['vessel_points'].InsertNextPoint([15.0, 15.0, z])
+        z = i * z_step
+        vtk_data['vessel_points'].InsertNextPoint([0.5 * DIMS['x'], 0.5 * DIMS['y'], z])
     vtk_data['vessel_center_line'] = vtkCellArray()
     vtk_data['vessel_center_line'].InsertNextCell(num_vessel_points)
     for i in range(num_vessel_points):
@@ -99,7 +100,7 @@ def runTrameServer(state_queue, update_queue):
     vtk_data['vessel_colors'].SetNumberOfTuples(num_vessel_points)
     vtk_data['vessel_colors'].SetNumberOfComponents(3)
     for i in range(num_vessel_points):
-        vtk_data['vessel_radius'].SetTuple1(i, 15.0)
+        vtk_data['vessel_radius'].SetTuple1(i, 0.5 * DIMS['x'])
         vtk_data['vessel_colors'].InsertTuple3(i, 255, 255, 255)
     vtk_data['vessel_polydata'].GetPointData().AddArray(vtk_data['vessel_radius'])
     vtk_data['vessel_polydata'].GetPointData().AddArray(vtk_data['vessel_colors'])
@@ -119,9 +120,9 @@ def runTrameServer(state_queue, update_queue):
     vtk_data['renderer'].AddActor(vtk_data['vessel_actor'])
 
     vtk_data['fluid_yz_plane'] = vtkPlaneSource()
-    vtk_data['fluid_yz_plane'].SetOrigin(15.0, 0.0, 80.0)
-    vtk_data['fluid_yz_plane'].SetPoint1(15.0, 0.0, 0.0)
-    vtk_data['fluid_yz_plane'].SetPoint2(15.0, 30.0, 80.0)
+    vtk_data['fluid_yz_plane'].SetOrigin(0.5 * DIMS['x'], 0.0, DIMS['z'])
+    vtk_data['fluid_yz_plane'].SetPoint1(0.5 * DIMS['x'], 0.0, 0.0)
+    vtk_data['fluid_yz_plane'].SetPoint2(0.5 * DIMS['x'], DIMS['y'], DIMS['z'])
     vtk_data['fluid_yz_mapper'] = vtkPolyDataMapper()
     vtk_data['fluid_yz_actor'] = vtkActor()
     vtk_data['fluid_yz_mapper'].SetInputConnection(vtk_data['fluid_yz_plane'].GetOutputPort())
@@ -129,9 +130,9 @@ def runTrameServer(state_queue, update_queue):
     vtk_data['renderer'].AddActor(vtk_data['fluid_yz_actor'])
 
     vtk_data['fluid_xz_plane'] = vtkPlaneSource()
-    vtk_data['fluid_xz_plane'].SetOrigin(0.0, 15.0, 0.0)
-    vtk_data['fluid_xz_plane'].SetPoint1(0.0, 15.0, 80.0)
-    vtk_data['fluid_xz_plane'].SetPoint2(30.0, 15.0, 0.0)
+    vtk_data['fluid_xz_plane'].SetOrigin(0.0, 0.5 * DIMS['y'], 0.0)
+    vtk_data['fluid_xz_plane'].SetPoint1(0.0, 0.5 * DIMS['y'], DIMS['z'])
+    vtk_data['fluid_xz_plane'].SetPoint2(DIMS['x'], 0.5 * DIMS['y'], 0.0)
     vtk_data['fluid_xz_mapper'] = vtkPolyDataMapper()
     vtk_data['fluid_xz_actor'] = vtkActor()
     vtk_data['fluid_xz_mapper'].SetInputConnection(vtk_data['fluid_xz_plane'].GetOutputPort())

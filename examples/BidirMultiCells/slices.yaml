@@ -12,9 +12,9 @@
         params: 
           topology: "fluid_topo"
           point: 
-            x: 15
-            y: 15
-            z: 0
+            x: 48.0
+            y: 48.0
+            z: 0.0
           normal: 
             x: 1.0
             y: 0.0
@@ -30,9 +30,9 @@
         params:
           topology: "fluid_topo"
           point:
-            x: 15
-            y: 15
-            z: 0
+            x: 48.0
+            y: 48.0
+            z: 0.0
           normal:
             x: 0.0
             y: 1.0
@@ -52,18 +52,18 @@
             name: "Inferno"
       renders:
         r1:
-          image_width: 800
-          image_height: 300
+          image_width: 900
+          image_height: 540
           image_name: "fluid_vel_mag_yz"
           annotations: "false"
           camera:
-            position: [55.0, 15.0, 40.0]
-            look_at: [15.0, 15.0, 40.0]
+            position: [120.0, 48.0, 78.0]
+            look_at: [48.0, 48.0, 78.0]
             up: [0.0, 1.0, 0.0]
             zoom: 1.0
-            fov: 45.0
+            fov: 90.0
             near_plane: 0.5
-            far_plane: 100.0
+            far_plane: 200.0
     s2:
       plots:
         p1:
@@ -76,15 +76,15 @@
             name: "Inferno"
       renders:
         r1:
-          image_width: 800
-          image_height: 300
+          image_width: 900
+          image_height: 540
           image_name: "fluid_vel_mag_xz"
           annotations: "false"
           camera:
-            position: [15.0, 55.0, 40.0]
-            look_at: [15.0, 15.0, 40.0]
+            position: [48.0, 120.0, 78.0]
+            look_at: [48.0, 48.0, 78.0]
             up: [1.0, 0.0, 0.0]
             zoom: 1.0
-            fov: 45.0
+            fov: 90.0
             near_plane: 0.5
-            far_plane: 100.0
+            far_plane: 200.0
