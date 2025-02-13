@@ -317,7 +317,8 @@ def createTriangleVtkPolyData(vertices, faces):
     triangles = vtkCellArray()
     for f in faces:
         if f[0] >= len(vertices) or f[1] >= len(vertices) or f[2] >= len(vertices):
-            print(f'bad face: {f}')
+            #print(f'bad face: {f}')
+            pass
         else:
             d01 = sqrDistance3d(vertices[f[0]], vertices[f[1]])
             d02 = sqrDistance3d(vertices[f[0]], vertices[f[2]])

@@ -50,14 +50,15 @@ void AscentBridge::Publish  (double **x, double **v, long ntimestep, int nghost,
   mesh["coordsets/fluid_coords/dims/i"] = nlx+1; 
   mesh["coordsets/fluid_coords/dims/j"] = nly+1;
   mesh["coordsets/fluid_coords/dims/k"] = nlz+1;
-  mesh["topologies/fluid_topo/type"] = "uniform";
-  mesh["topologies/fluid_topo/coordset"] = "fluid_coords";
-  mesh["coordsets/fluid_coords/origin/x"] = domainBox.x0; //+ envelopeWidth;
-  mesh["coordsets/fluid_coords/origin/y"] = domainBox.y0;// + envelopeWidth;
-  mesh["coordsets/fluid_coords/origin/z"] = domainBox.z0;// + envelopeWidth;
+  mesh["coordsets/fluid_coords/origin/x"] = domainBox.x0 - 0.5; // + envelopeWidth;
+  mesh["coordsets/fluid_coords/origin/y"] = domainBox.y0 - 0.5; // + envelopeWidth;
+  mesh["coordsets/fluid_coords/origin/z"] = domainBox.z0 - 0.5; // + envelopeWidth;
   mesh["coordsets/fluid_coords/spacing/dx"] = 1;
   mesh["coordsets/fluid_coords/spacing/dy"] = 1;
   mesh["coordsets/fluid_coords/spacing/dz"] = 1;
+  mesh["topologies/fluid_topo/type"] = "uniform";
+  mesh["topologies/fluid_topo/coordset"] = "fluid_coords";
+
 
   Array<double,3> vel(0.,0.,0.); //jifu 5/31/2022
   Array<double,3> vor(0.,0.,0.);
@@ -69,8 +70,8 @@ void AscentBridge::Publish  (double **x, double **v, long ntimestep, int nghost,
       {
         vel = velocityArray.get(i+envelopeWidth,j+envelopeWidth,k+envelopeWidth); //jifu 5/31/2022 Array<double 3> vel ->vel
         vor = vorticityArray.get(i+envelopeWidth,j+envelopeWidth,k+envelopeWidth);
-        double norm = velocityNormArray.get(i+envelopeWidth,j+envelopeWidth,k+envelopeWidth);
-        int index = (j) * (nlx) + (i) + (k) * (nlx) * (nly);
+        //double norm = velocityNormArray.get(i+envelopeWidth,j+envelopeWidth,k+envelopeWidth);
+        //int index = (j) * (nlx) + (i) + (k) * (nlx) * (nly);
         velocity_x.push_back(vel[0]);
         velocity_y.push_back(vel[1]);
         velocity_z.push_back(vel[2]);
@@ -84,13 +85,13 @@ void AscentBridge::Publish  (double **x, double **v, long ntimestep, int nghost,
 
   // Now add velocity as separate arrays
   mesh["fields/fluid_velocity/association"] = "element";//"vertex";
-  mesh["fields/fluid_velocity/topology"]    = "fluid_topo";
+  mesh["fields/fluid_velocity/topology"] = "fluid_topo";
   mesh["fields/fluid_velocity/values/x"].set(velocity_x);
   mesh["fields/fluid_velocity/values/y"].set(velocity_y);
   mesh["fields/fluid_velocity/values/z"].set(velocity_z);
 
   mesh["fields/fluid_vorticity/association"] = "element";//"vertex";
-  mesh["fields/fluid_vorticity/topology"]    = "fluid_topo";
+  mesh["fields/fluid_vorticity/topology"] = "fluid_topo";
   mesh["fields/fluid_vorticity/values/x"].set(vorticity_x);
   mesh["fields/fluid_vorticity/values/y"].set(vorticity_y);
   mesh["fields/fluid_vorticity/values/z"].set(vorticity_z);
@@ -101,8 +102,8 @@ void AscentBridge::Publish  (double **x, double **v, long ntimestep, int nghost,
   mesh["coordsets/particle_coords/values/y"].set(conduit::DataType::float64(nvals));
   mesh["coordsets/particle_coords/values/z"].set(conduit::DataType::float64(nvals));
 
-  mesh["topologies/particle_topo/type"]           = "unstructured";
-  mesh["topologies/particle_topo/coordset"]       = "particle_coords";
+  mesh["topologies/particle_topo/type"] = "unstructured";
+  mesh["topologies/particle_topo/coordset"] = "particle_coords";
   mesh["topologies/particle_topo/elements/shape"] = "tri";
   mesh["topologies/particle_topo/elements/connectivity"].set(conduit::DataType::int32(nanglelist * 3));
 

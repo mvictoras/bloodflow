@@ -665,8 +665,8 @@ int main(int argc, char* argv[]) {
         Box3D domain = Box3D(localdomain[myrank][0],localdomain[myrank][1],localdomain[myrank][2],localdomain[myrank][3],localdomain[myrank][4],localdomain[myrank][5]);
         //*************************************
         
-        cout<<"Rank: " << myrank <<" local domain Extents: x: " <<domain.x0 << " " << domain.x1 << " y: " << domain.y0 <<" "<<domain.y1<< " z "<<domain.z0<<" "<<domain.z1<<endl;
-        cout<<"Rank: " << myrank <<" Vorticity Extents: " <<vorticityArray.getNx() << " " << vorticityArray.getNy() << " " << vorticityArray.getNz()<<endl;
+        //cout<<"Rank: " << myrank <<" local domain Extents: x: " <<domain.x0 << " " << domain.x1 << " y: " << domain.y0 <<" "<<domain.y1<< " z "<<domain.z0<<" "<<domain.z1<<endl;
+        //cout<<"Rank: " << myrank <<" Vorticity Extents: " <<vorticityArray.getNx() << " " << vorticityArray.getNy() << " " << vorticityArray.getNz()<<endl;
         //cout<<"Rank: " << myrank <<" Velocity Extents: " <<velocityArray.getNx() << " " << velocityArray.getNy() << " " << velocityArray.getNz()<<endl;
         //cout<<"Rank: " << myrank <<" Velocity Norm Extents: " <<velocityNormArray.getNx() << " " << velocityNormArray.getNy() << " " << velocityNormArray.getNz()<<endl;
 #ifdef ENABLE_ASCENT
