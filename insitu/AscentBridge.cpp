@@ -96,7 +96,8 @@ void AscentBridge::Publish  (double **x, double **v, long ntimestep, int nghost,
   mesh["fields/fluid_vorticity/values/y"].set(vorticity_y);
   mesh["fields/fluid_vorticity/values/z"].set(vorticity_z);
 
-  int nvals = nlocal;//+nghost;
+  //int nvals = nlocal;//+nghost;
+  int nvals = nlocal + nghost;
   mesh["coordsets/particle_coords/type"] = "explicit";
   mesh["coordsets/particle_coords/values/x"].set(conduit::DataType::float64(nvals));
   mesh["coordsets/particle_coords/values/y"].set(conduit::DataType::float64(nvals));
@@ -131,10 +132,10 @@ void AscentBridge::Publish  (double **x, double **v, long ntimestep, int nghost,
 
   mesh["fields/particle_velocity_magnitude"]["association"] = "vertex";   // data per particle (vertex)
   mesh["fields/particle_velocity_magnitude"]["topology"]    = "particle_topo";
-  mesh["fields/particle_velocity_magnitude"]["values"].set(conduit::DataType::float64(nlocal));
+  mesh["fields/particle_velocity_magnitude"]["values"].set(conduit::DataType::float64(nvals));
   double *velMag = mesh["fields/particle_velocity_magnitude"]["values"].value();
 
-  for(int i=0; i<nlocal; ++i)
+  for(int i=0; i<nvals; ++i)
   {
       double vx = v[i][0];
       double vy = v[i][1];

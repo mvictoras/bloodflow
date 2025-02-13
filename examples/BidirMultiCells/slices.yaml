@@ -47,7 +47,7 @@
           field: "fluid_vel_mag"
           pipeline: pl1
           min_value: 0.0
-          max_value: 0.0008
+          max_value: 0.0006
           color_table:
             name: "Cold and Hot"
       renders:
@@ -71,7 +71,7 @@
           field: "fluid_vel_mag"
           pipeline: pl2
           min_value: 0.0
-          max_value: 0.0008
+          max_value: 0.0006
           color_table:
             name: "Cold and Hot"
       renders:

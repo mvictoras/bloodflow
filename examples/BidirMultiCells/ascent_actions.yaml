@@ -3,9 +3,9 @@
   triggers:
     t1:
       params:
-        condition: "cycle() >= 60"
+        condition: "cycle() >= 200"
         actions_file : "slices.yaml"
     t2:
       params:
-        condition: "cycle() >= 60"
+        condition: "cycle() >= 200"
         actions_file : "trame.yaml"
