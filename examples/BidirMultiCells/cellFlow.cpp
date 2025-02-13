@@ -254,7 +254,7 @@ void squarePoiseuilleSetup( MultiBlockLattice3D<T,DESCRIPTOR>& lattice,
     setBoundaryVelocity(lattice, right, Array<T,3>((T)0.0,(T)0.0,(T)0.0));
  */
  	Array<plint,2> coor(nx/2,ny/2);
-	plint r = nz/2;
+	plint r = nx/2;
      defineDynamics(lattice,lattice.getBoundingBox(),new WallDomain3D<plint>(coor,r), new BounceBack<T,DESCRIPTOR>);	
 
     //initializeAtEquilibrium(lattice, lattice.getBoundingBox(), SquarePoiseuilleDensityAndVelocity<T>(parameters, NMAX));
@@ -592,7 +592,7 @@ int main(int argc, char* argv[]) {
     A = ny/10;
     L = nz/4;
     Zc = nz/2;  
-    createDynamicBoundaryFromDataProcessor(lattice, A,L,Zc,parameters.getOmega()); // added by NT 7/18/2022
+    //createDynamicBoundaryFromDataProcessor(lattice, A,L,Zc,parameters.getOmega()); // added by NT 7/18/2022
 
     for (plint iT=0;iT<1e2;iT++){ //(plint iT=0;iT<4e3;iT++){
         lattice.collideAndStream();
@@ -661,10 +661,12 @@ int main(int argc, char* argv[]) {
    	    TensorField3D<T,3> vorticityArray = vort.getComponent(myrank);
       	ScalarField3D<T> velocityNormArray = velNorm.getComponent(myrank);
       
-        Box3D domain = Box3D(localdomain[myrank][0]-envelopeWidth,localdomain[myrank][1]+envelopeWidth,localdomain[myrank][2]-envelopeWidth,localdomain[myrank][3]+envelopeWidth,localdomain[myrank][4]-envelopeWidth,localdomain[myrank][5]+envelopeWidth);
+        //Box3D domain = Box3D(localdomain[myrank][0]-envelopeWidth,localdomain[myrank][1]+envelopeWidth,localdomain[myrank][2]-envelopeWidth,localdomain[myrank][3]+envelopeWidth,localdomain[myrank][4]-envelopeWidth,localdomain[myrank][5]+envelopeWidth);
+        Box3D domain = Box3D(localdomain[myrank][0],localdomain[myrank][1],localdomain[myrank][2],localdomain[myrank][3],localdomain[myrank][4],localdomain[myrank][5]);
         //*************************************
         
-        //cout<<"Rank: " << myrank <<" Vorticity Extents: " <<vorticityArray.getNx() << " " << vorticityArray.getNy() << " " << vorticityArray.getNz()<<endl;
+        cout<<"Rank: " << myrank <<" local domain Extents: x: " <<domain.x0 << " " << domain.x1 << " y: " << domain.y0 <<" "<<domain.y1<< " z "<<domain.z0<<" "<<domain.z1<<endl;
+        cout<<"Rank: " << myrank <<" Vorticity Extents: " <<vorticityArray.getNx() << " " << vorticityArray.getNy() << " " << vorticityArray.getNz()<<endl;
         //cout<<"Rank: " << myrank <<" Velocity Extents: " <<velocityArray.getNx() << " " << velocityArray.getNy() << " " << velocityArray.getNz()<<endl;
         //cout<<"Rank: " << myrank <<" Velocity Norm Extents: " <<velocityNormArray.getNx() << " " << velocityNormArray.getNy() << " " << velocityNormArray.getNz()<<endl;
 #ifdef ENABLE_ASCENT
@@ -695,7 +697,7 @@ int main(int argc, char* argv[]) {
             std::cout << "New clot" << std::endl;
             //clotLoc = 1;
             //radius = 15;
-            modifyDynamicBoundaryFromDataProcessor(lattice, A, L, Zc, parameters.getOmega());
+            //modifyDynamicBoundaryFromDataProcessor(lattice, A, L, Zc, parameters.getOmega());
         }
         ////// Lattice Boltzmann iteration step.
 
