@@ -177,7 +177,7 @@ def runTrameServer(state_queue, update_queue):
 
     # callback for clicking submit button
     def submitSteeringOptions():
-        steering_data = {'vessel_radius': DIMS['x'] - state.stenosis_amplitude}
+        steering_data = {'vessel_radius': (0.5 * DIMS['x']) - state.stenosis_amplitude}
         update_queue.put(steering_data)
 
     # register callbacks
