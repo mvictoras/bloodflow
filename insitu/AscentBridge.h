@@ -33,12 +33,15 @@ class AscentBridge
 
     void Initialize(MPI_Comm world);
     
+    void RegisterCallback(const std::string &callback_name,
+                          void (*callback_function)(conduit::Node &, conduit::Node &));
+    
     void Publish(double **x, double **v, long ntimestep, int nghost, 
-                int nlocal, int **anglelist, int nanglelist,
-              TensorField3D<double, 3> velocityDoubleArray, 
-              TensorField3D<double, 3> vorticityDoubleArray, 
-              ScalarField3D<double> velocityNormDoubleArray,
-              int nx, int ny, int nz, Box3D domainBox, plint envelopeWidth); 
+                 int nlocal, int **anglelist, int nanglelist,
+                 TensorField3D<double, 3> velocityDoubleArray, 
+                 TensorField3D<double, 3> vorticityDoubleArray, 
+                 ScalarField3D<double> velocityNormDoubleArray,
+                 int nx, int ny, int nz, Box3D domainBox, plint envelopeWidth); 
     
     void Finalize();
 

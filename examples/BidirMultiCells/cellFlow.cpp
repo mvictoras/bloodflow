@@ -431,6 +431,10 @@ void addRandomCell(conduit::Node &params, conduit::Node &output) {
     wrapper->execCommand(commandVec.data());
     fixDepositString.str("");
 }
+
+void updateVesselStenosis(conduit::Node &params, conduit::Node &output) {
+    std::cout << params.to_yaml() << std::endl;
+}
 #endif
 
 //**************************************
@@ -456,7 +460,9 @@ int main(int argc, char* argv[]) {
 
 #ifdef ENABLE_ASCENT
     AscentBridge::getInstance().Initialize(global::mpi().getGlobalCommunicator());
-    ascent::register_callback("addRandomCell", addRandomCell);
+    AscentBridge::getInstance().RegisterCallback("addRandomCell", addRandomCell);
+    AscentBridge::getInstance().RegisterCallback("updateVesselStenosis", updateVesselStenosis);
+    //ascent::register_callback("addRandomCell", addRandomCell);
 #endif
 
     /*Options ops(argc, argv);

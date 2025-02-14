@@ -164,6 +164,11 @@ def runTrameServer(state_queue, update_queue):
         if not enable_steering:
             update_queue.put({})
 
+    # callback for stenosis amplitude slider
+    def uiStateUpdateStenosisAmplitude(stenosis_amplitude, **kwargs):
+        # TODO: update vtk tube radius at fixed location
+        pass
+
     # callback for slice opacity slider
     def uiStateUpdateSliceOpacity(slice_opacity, **kwargs):
         vtk_data['fluid_yz_actor'].GetProperty().SetOpacity(slice_opacity)
@@ -172,11 +177,12 @@ def runTrameServer(state_queue, update_queue):
 
     # callback for clicking submit button
     def submitSteeringOptions():
-        steering_data = {}
+        steering_data = {'vessel_radius': DIMS['x'] - state.stenosis_amplitude}
         update_queue.put(steering_data)
 
     # register callbacks
     state.change('enable_steering')(uiStateEnableSteeringUpdate)
+    state.change('stenosis_amplitude')(uiStateUpdateStenosisAmplitude)
     state.change('slice_opacity')(uiStateUpdateSliceOpacity)
 
     # define webpage layout
@@ -190,6 +196,19 @@ def runTrameServer(state_queue, update_queue):
                 v_model=('enable_steering', True),
                 hide_details=True,
                 dense=True
+            )
+            vuetify.VSpacer()
+            vuetify.VSlider(
+                label='Stenosis Amplitude',
+                v_model=('stenosis_amplitude', 0),
+                min=0,
+                max=35,
+                step=1,
+                hide_details=True,
+                dense=True
+            )
+            vuetify.VCol(
+                '{{stenosis_amplitude}}'
             )
             vuetify.VSpacer()
             vuetify.VSlider(

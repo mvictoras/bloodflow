@@ -27,15 +27,17 @@ void AscentBridge::Initialize(MPI_Comm world) {
   mAscent.open(ascent_opts);
 }
 
-void AscentBridge::Publish  (double **x, double **v, long ntimestep, int nghost, 
-                      int nlocal, int **anglelist, int nanglelist, 
-                      TensorField3D<double, 3> velocityArray,
-                      TensorField3D<double, 3> vorticityArray,
-                      ScalarField3D<double> velocityNormArray,
-                      int nx, int ny, int nz, Box3D domainBox, plint envelopeWidth) {
+void AscentBridge::RegisterCallback(const std::string &callback_name,
+                                    void (*callback_function)(conduit::Node &, conduit::Node &)) {
+  ascent::register_callback(callback_name, callback_function);
+}
 
-  
-
+void AscentBridge::Publish(double **x, double **v, long ntimestep, int nghost, 
+                           int nlocal, int **anglelist, int nanglelist, 
+                           TensorField3D<double, 3> velocityArray,
+                           TensorField3D<double, 3> vorticityArray,
+                           ScalarField3D<double> velocityNormArray,
+                           int nx, int ny, int nz, Box3D domainBox, plint envelopeWidth) {
   conduit::Node mesh;
   const int num_tris = nanglelist;
   const int conn_len = num_tris * 3;
