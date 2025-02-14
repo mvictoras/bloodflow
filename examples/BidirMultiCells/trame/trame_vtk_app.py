@@ -167,7 +167,11 @@ def runTrameServer(state_queue, update_queue):
     # callback for stenosis amplitude slider
     def uiStateUpdateStenosisAmplitude(stenosis_amplitude, **kwargs):
         # TODO: update vtk tube radius at fixed location
-        pass
+        position = int((1 / 3) * num_vessel_points)
+        vtk_data['vessel_radius'].SetTuple1(position, 0.5 * DIMS['x'] - stenosis_amplitude)
+        vtk_data['vessel_tube'].Modified()
+        vtk_data['trame_view'].update()
+
 
     # callback for slice opacity slider
     def uiStateUpdateSliceOpacity(slice_opacity, **kwargs):
