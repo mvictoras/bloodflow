@@ -450,7 +450,7 @@ void AngleRbc::compute(int eflag, int vflag)
   }*/
   bigint ntimestep;
   ntimestep = update->ntimestep;
-  std::cout << " nmolecule "<< nmolecule <<" nmolecule_new: "<< nmolecule_new << " timestep: " << ntimestep << std::endl;
+  //std::cout << " nmolecule "<< nmolecule <<" nmolecule_new: "<< nmolecule_new << " timestep: " << ntimestep << std::endl;
   for (n = 0; n < nanglelist; n++) {
     i1 = anglelist[n][0];
     i2 = anglelist[n][1];

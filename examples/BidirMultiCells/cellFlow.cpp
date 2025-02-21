@@ -270,7 +270,7 @@ template <typename T, template <typename U> class Descriptor>
 class DynamicBoundaryFunctional : public BoxProcessingFunctional3D_L<T, Descriptor> {
 public:
     //DynamicBoundaryFunctional(plint xc_, plint yc_, plint radius_, T rn_, plint it_, plint zl_, plint clotLoc_) : xc(xc_), yc(yc_), radius(radius_), rn(rn_), it(it_), zl(zl_), clotLoc(clotLoc_) { }
-    DynamicBoundaryFunctional(plint A_, plint L_, plint Zc_, T omega_) : A(A_), L(L_), Zc(Zc_), omega(omega_) { }
+    DynamicBoundaryFunctional( T A_, T L_, T Zc_, T omega_) : A(A_), L(L_), Zc(Zc_), omega(omega_) { }
     virtual void process(Box3D domain, BlockLattice3D<T, Descriptor> &lattice)
     {
 	    /*
@@ -297,12 +297,17 @@ public:
         for (plint iX = domain.x0; iX <= domain.x1; ++iX) {
            for (plint iY = domain.y0; iY <= domain.y1; ++iY) {
                for (plint iZ = domain.z0; iZ <= domain.z1; ++iZ) {  // was "for (plint iZ = domain.z0; iZ <= domain.z1; ++iZ) {"
-			T clotHeight = A*cos(2*pi*(iZ-Zc)/L);
-			if (iY < clotHeight){
-                        	lattice.attributeDynamics(iX, iY, iZ, new BounceBack<T, DESCRIPTOR>);
-			}else{
-				lattice.attributeDynamics(iX, iY, iZ, new GuoExternalForceBGKdynamics<T, DESCRIPTOR>(omega));
+			lattice.attributeDynamics(iX, iY, iZ, new GuoExternalForceBGKdynamics<T, DESCRIPTOR>(omega));
+			plint clot_start = Zc - L/2.0;	
+			plint iZ_global = iZ + relativeOffset.z;
+			plint iY_global = iY + relativeOffset.y;
+		        if ((iZ_global > clot_start) && (iZ_global < clot_start + L)) {
+			T clotHeight = A*(1.0+cos(2*pi*(iZ_global-Zc)/L));
+			if (iY_global < clotHeight){
+				lattice.attributeDynamics(iX, iY, iZ, new BounceBack<T, DESCRIPTOR>);
 			}
+		}
+		       
                   /*  T dist = (iY + relativeOffset.y - yc)*(iY + relativeOffset.y - yc) + 
                              (iX + relativeOffset.x - xc)*(iX + relativeOffset.x - xc); //XXXX change later - Nazariy
                     T xscale = .5 * rn * it; // scaling factor for x (how wide) replace with a slider later.
@@ -339,8 +344,10 @@ private:
     plint radius;
     T rn; //XXXX added by Nazariy 7/12
 	  */
-    plint A, L, Zc; //A: amplitude, L: clot size, Zc: the center of clot in z. Assuming flow is in z direction
+    T A, L, Zc; //A: amplitude, L: clot size, Zc: the center of clot in z. Assuming flow is in z direction
     T omega;
+//    plint cx, cy; // center of the cylinder in (x, y)
+//    plint r; // radius of the cylinder
 };
 
 // template <typename T, class Descriptor<typename U>>
@@ -352,7 +359,7 @@ private:
 /// Automatic instantiation of the bounce-back nodes for the boundary,
 ///   using a data processor.
 void createDynamicBoundaryFromDataProcessor(
-    MultiBlockLattice3D<T, DESCRIPTOR> &lattice, plint A, plint L, plint Zc, T omega) // removed 
+    MultiBlockLattice3D<T, DESCRIPTOR> &lattice, T A, T L, T Zc, T omega) // removed 
 {
 //    plint it = 0; // change back to 0 when finished debugging the bidirectional stu0ff and lammps domain stuff. 
     applyProcessingFunctional(
@@ -361,7 +368,7 @@ void createDynamicBoundaryFromDataProcessor(
 }
 
 void modifyDynamicBoundaryFromDataProcessor(
-    MultiBlockLattice3D<T, DESCRIPTOR> &lattice, plint A, plint L, plint Zc, T omega)
+    MultiBlockLattice3D<T, DESCRIPTOR> &lattice, T A, T L, T Zc, T omega)
 {
     applyProcessingFunctional(
         new DynamicBoundaryFunctional<T, DESCRIPTOR>(A,L,Zc,omega), lattice.getBoundingBox(),
@@ -434,14 +441,20 @@ void addRandomCell(conduit::Node &params, conduit::Node &output) {
 
 void updateVesselStenosis(conduit::Node &params, conduit::Node &output) {
     std::cout << params.to_yaml() << std::endl;
+	// if params.has_path() // jifu: not completed
 }
+
 #endif
+
+bool steeringUpdate = false;
+T stenosisAmp = 0.0;
 
 //**************************************
 int main(int argc, char* argv[]) {
     plbInit(&argc, &argv);
     global::directories().setOutputDir("./tmp/");
     
+    plint myrank = global::mpi().getRank();
 /*
     if (argc != 2) {
         pcout << "Error the parameters are wrong. The structure must be :\n";
@@ -494,11 +507,11 @@ int main(int argc, char* argv[]) {
     double zhi = domain->boxhi[2];
 
     // Print the boundaries
-    printf("Domain boundaries:\n");
+    /*printf("Domain boundaries:\n");
     printf("xlo: %f, xhi: %f\n", xlo, xhi);
     printf("ylo: %f, yhi: %f\n", ylo, yhi);
     printf("zlo: %f, zhi: %f\n", zlo, zhi);
-
+*/
 
     const int nx = static_cast<int>(xhi - xlo);
     const int ny = static_cast<int>(yhi - ylo);
@@ -594,12 +607,16 @@ int main(int argc, char* argv[]) {
     zLength = parameters.getNz(); // because domain.z0 gives local value pass this instead.
     clotLoc = zLength;  
   */ 
-    plint A, L, Zc;
-    A = ny/10;
-    L = nz/4;
-    Zc = nz/2;  
-    //createDynamicBoundaryFromDataProcessor(lattice, A,L,Zc,parameters.getOmega()); // added by NT 7/18/2022
-
+    T A, L, Zc;
+    A = ny/5.0; // initial clot height
+    L = nz*1.0;
+    Zc = nz/2.0;  
+    createDynamicBoundaryFromDataProcessor(lattice, A,L,Zc,parameters.getOmega()); // added by NT 7/18/2022
+ // define cylinderical walls	
+    Array<plint,2> coor(nx/2,ny/2);
+    plint r = nx/2;
+    defineDynamics(lattice,lattice.getBoundingBox(),new WallDomain3D<plint>(coor,r), new BounceBack<T,DESCRIPTOR>);	
+   
     for (plint iT=0;iT<1e2;iT++){ //(plint iT=0;iT<4e3;iT++){
         lattice.collideAndStream();
     }
@@ -622,7 +639,6 @@ int main(int argc, char* argv[]) {
     // Array<double,3> center(0.,0.,0.);
     //  std::vector<std::double> center;
 
-    plint myrank = global::mpi().getRank();
     MultiTensorField3D<T,3> vel(lattice);
     MultiTensorField3D<double, 3> vort(lattice);
     MultiScalarField3D<double> velNorm(lattice);
@@ -681,7 +697,7 @@ int main(int argc, char* argv[]) {
             AscentBridge::getInstance().Publish(x, v, ntimestep, nghost ,nlocal, anglelist, nanglelist,
                                 velocityArray, vorticityArray, velocityNormArray, 
                                 nx, ny, nz, domain, envelopeWidth);
-            if(iT == 5) {
+        /*    if(iT == 5) {
                 std::cout << "Inserting a new RBC" << std::endl;
                 int pt[] = {10, 10, 10};
                 fixDepositString << "fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian "<<pt[0]<<" "<<pt[1]<<" "<< pt[2] << " 1 near 2 "<<endl;
@@ -690,7 +706,7 @@ int main(int argc, char* argv[]) {
                 wrapper->execCommand(fixDepositString);
                 //wrapper->execCommand("fix 3 cells deposit 1 0 1 12345 mol singleRBC region RBC_zone id max gaussian 10 10 5 10 near 2 ");// this is working, 7/6/2023 TISHCHENKO
                 fixDepositString.str("");
-            }
+            }*/
         }
 #endif        
 
@@ -699,8 +715,22 @@ int main(int argc, char* argv[]) {
         ////------------ classical ibm coupling-------------//
         spreadForce3D(lattice,*wrapper);
         ///--------------redefine a new domain--------------// NT 12/20
-        if(iT == 6) {
-            std::cout << "New clot" << std::endl;
+        if(steeringUpdate) {
+            pcout << "change clot size" << std::endl;
+	    // The stenosis geometry y = A*cos(2*pi*(z-zc)/L): 
+	    A = stenosisAmp;
+	    //ny/3.0; //clot height is 2/3*ny; big than this value may cause overlapping between walls and the cells, as there is no detection for the overlapping
+    	    L = nz*1.0; // clot size in z direction 
+            Zc = nz/2.0;  // center of the clot
+            createDynamicBoundaryFromDataProcessor(lattice, A,L,Zc,parameters.getOmega()); // added by NT 7/18/2022
+ // define cylinderical walls	
+          defineDynamics(lattice,lattice.getBoundingBox(),new WallDomain3D<plint>(coor,r), new BounceBack<T,DESCRIPTOR>);	
+   
+    for (plint iiT=0;iiT<5e2;iiT++){ //internal iteration is needed to restore the flow 
+        lattice.collideAndStream();
+    }
+
+    steeringUpdate = false;
             //clotLoc = 1;
             //radius = 15;
             //modifyDynamicBoundaryFromDataProcessor(lattice, A, L, Zc, parameters.getOmega());
@@ -721,7 +751,7 @@ int main(int argc, char* argv[]) {
         //writeVTK(lattice, domainBox, iT);
 	
     }
-    wrapper->execCommand("dump 2 cells xyz 1 dump2.rbc.xyz");
+    //wrapper->execCommand("dump 2 cells xyz 1 dump2.rbc.xyz");
     timeduration = global::timer("mainloop").stop();
     pcout<<"total execution time "<<timeduration<<endl;
     delete boundaryCondition;
