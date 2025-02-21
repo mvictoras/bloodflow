@@ -718,7 +718,7 @@ int main(int argc, char* argv[]) {
         if(steeringUpdate) {
             pcout << "change clot size" << std::endl;
 	    // The stenosis geometry y = A*cos(2*pi*(z-zc)/L): 
-	    A = stenosisAmp;
+	    A = stenosisAmp; // max allowed value: ny*3
 	    //ny/3.0; //clot height is 2/3*ny; big than this value may cause overlapping between walls and the cells, as there is no detection for the overlapping
     	    L = nz*1.0; // clot size in z direction 
             Zc = nz/2.0;  // center of the clot
