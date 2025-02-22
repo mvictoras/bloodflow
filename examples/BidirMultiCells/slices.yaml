@@ -12,8 +12,8 @@
         params: 
           topology: "fluid_topo"
           point: 
-            x: 45.0
-            y: 45.0
+            x: 180.0
+            y: 180.0
             z: 0.0
           normal: 
             x: 1.0
@@ -30,8 +30,8 @@
         params:
           topology: "fluid_topo"
           point:
-            x: 45.0
-            y: 45.0
+            x: 180.0
+            y: 180.0
             z: 0.0
           normal:
             x: 0.0
@@ -57,13 +57,13 @@
           image_name: "fluid_vel_mag_yz"
           annotations: "false"
           camera:
-            position: [90.0, 45.0, 75.0]
-            look_at: [45.0, 45.0, 75.0]
+            position: [360.0, 180.0, 600.0]
+            look_at: [180.0, 180.0, 600.0]
             up: [0.0, 1.0, 0.0]
             zoom: 1.0
             fov: 90.0
             near_plane: 0.5
-            far_plane: 200.0
+            far_plane: 1000.0
     s2:
       plots:
         p1:
@@ -81,10 +81,10 @@
           image_name: "fluid_vel_mag_xz"
           annotations: "false"
           camera:
-            position: [45.0, 90.0, 75.0]
-            look_at: [45.0, 45.0, 75.0]
+            position: [180.0, 360.0, 600.0]
+            look_at: [180.0, 180.0, 600.0]
             up: [1.0, 0.0, 0.0]
             zoom: 1.0
             fov: 90.0
             near_plane: 0.5
-            far_plane: 200.0
+            far_plane: 1000.0

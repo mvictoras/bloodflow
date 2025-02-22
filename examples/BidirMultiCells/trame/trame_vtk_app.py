@@ -24,7 +24,7 @@ from trame.app import get_server, asynchronous
 from trame.widgets import vuetify, vtklocal as vtk_widgets
 from trame.ui.vuetify import SinglePageLayout
 
-DIMS = {'x': 90.0, 'y': 90.0, 'z': 150.0}
+DIMS = {'x': 360.0, 'y': 360.0, 'z': 1200.0}
 
 class QueueManager(BaseManager):
     pass
@@ -167,7 +167,7 @@ def runTrameServer(state_queue, update_queue):
     # callback for stenosis amplitude slider
     def uiStateUpdateStenosisAmplitude(stenosis_amplitude, **kwargs):
         # TODO: update vtk tube radius at fixed location
-        position = int((1 / 3) * num_vessel_points)
+        position = num_vessel_points // 2
         vtk_data['vessel_radius'].SetTuple1(position, 0.5 * DIMS['x'] - stenosis_amplitude)
         vtk_data['vessel_tube'].Modified()
         vtk_data['trame_view'].update()
@@ -181,7 +181,7 @@ def runTrameServer(state_queue, update_queue):
 
     # callback for clicking submit button
     def submitSteeringOptions():
-        steering_data = {'vessel_radius': (0.5 * DIMS['x']) - state.stenosis_amplitude}
+        steering_data = {'stenosis_amplitude': float(state.stenosis_amplitude)}
         update_queue.put(steering_data)
 
     # register callbacks
@@ -206,7 +206,7 @@ def runTrameServer(state_queue, update_queue):
                 label='Stenosis Amplitude',
                 v_model=('stenosis_amplitude', 0),
                 min=0,
-                max=35,
+                max=(DIMS['y'] // 3) - 1,
                 step=1,
                 hide_details=True,
                 dense=True

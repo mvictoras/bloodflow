@@ -415,6 +415,8 @@ void writeVTK(MultiBlockLattice3D<T,DESCRIPTOR>& lattice,
 }
 
 LammpsWrapper* wrapper;
+bool steeringUpdate = false;
+T stenosisAmp = 0.0;
 
 #ifdef ENABLE_ASCENT
 double random_double(double min, double max) {
@@ -441,13 +443,12 @@ void addRandomCell(conduit::Node &params, conduit::Node &output) {
 
 void updateVesselStenosis(conduit::Node &params, conduit::Node &output) {
     std::cout << params.to_yaml() << std::endl;
-	// if params.has_path() // jifu: not completed
+	if (params.has_path("stenosis_amplitude")) {
+        stenosisAmp = params["stenosis_amplitude"].as_float64();
+        steeringUpdate = true;
+    }
 }
-
 #endif
-
-bool steeringUpdate = false;
-T stenosisAmp = 0.0;
 
 //**************************************
 int main(int argc, char* argv[]) {
@@ -608,18 +609,18 @@ int main(int argc, char* argv[]) {
     clotLoc = zLength;  
   */ 
     T A, L, Zc;
-    A = ny/5.0; // initial clot height
-    L = nz*1.0;
-    Zc = nz/2.0;  
-    createDynamicBoundaryFromDataProcessor(lattice, A,L,Zc,parameters.getOmega()); // added by NT 7/18/2022
+    //A = ny/5.0; // initial clot height
+    //L = nz*1.0;
+    //Zc = nz/2.0;  
+    //createDynamicBoundaryFromDataProcessor(lattice, A,L,Zc,parameters.getOmega()); // added by NT 7/18/2022
  // define cylinderical walls	
     Array<plint,2> coor(nx/2,ny/2);
     plint r = nx/2;
-    defineDynamics(lattice,lattice.getBoundingBox(),new WallDomain3D<plint>(coor,r), new BounceBack<T,DESCRIPTOR>);	
+    //defineDynamics(lattice,lattice.getBoundingBox(), new WallDomain3D<plint>(coor,r), new BounceBack<T,DESCRIPTOR>);	
    
-    for (plint iT=0;iT<1e2;iT++){ //(plint iT=0;iT<4e3;iT++){
-        lattice.collideAndStream();
-    }
+    //for (plint iT=0; iT<100;iT++){ 
+    //    lattice.collideAndStream();
+    //}
 
     long time = 0; 
  
@@ -694,7 +695,7 @@ int main(int argc, char* argv[]) {
 #ifdef ENABLE_ASCENT
         if (iT%(iSave) ==0 && iT >0){
 
-            AscentBridge::getInstance().Publish(x, v, ntimestep, nghost ,nlocal, anglelist, nanglelist,
+            AscentBridge::getInstance().Publish(x, v, ntimestep, nghost, nlocal, anglelist, nanglelist,
                                 velocityArray, vorticityArray, velocityNormArray, 
                                 nx, ny, nz, domain, envelopeWidth);
         /*    if(iT == 5) {
@@ -717,23 +718,19 @@ int main(int argc, char* argv[]) {
         ///--------------redefine a new domain--------------// NT 12/20
         if(steeringUpdate) {
             pcout << "change clot size" << std::endl;
-	    // The stenosis geometry y = A*cos(2*pi*(z-zc)/L): 
-	    A = stenosisAmp; // max allowed value: ny*3
-	    //ny/3.0; //clot height is 2/3*ny; big than this value may cause overlapping between walls and the cells, as there is no detection for the overlapping
+            // The stenosis geometry y = A*cos(2*pi*(z-zc)/L): 
+            A = stenosisAmp; // max allowed value: ny*3
     	    L = nz*1.0; // clot size in z direction 
             Zc = nz/2.0;  // center of the clot
-            createDynamicBoundaryFromDataProcessor(lattice, A,L,Zc,parameters.getOmega()); // added by NT 7/18/2022
- // define cylinderical walls	
-          defineDynamics(lattice,lattice.getBoundingBox(),new WallDomain3D<plint>(coor,r), new BounceBack<T,DESCRIPTOR>);	
-   
-    for (plint iiT=0;iiT<5e2;iiT++){ //internal iteration is needed to restore the flow 
-        lattice.collideAndStream();
-    }
+            createDynamicBoundaryFromDataProcessor(lattice, A, L, Zc, parameters.getOmega()); // added by NT 7/18/2022
+            // define cylinderical walls
+            defineDynamics(lattice,lattice.getBoundingBox(), new WallDomain3D<plint>(coor,r), new BounceBack<T,DESCRIPTOR>);	
 
-    steeringUpdate = false;
-            //clotLoc = 1;
-            //radius = 15;
-            //modifyDynamicBoundaryFromDataProcessor(lattice, A, L, Zc, parameters.getOmega());
+            for (plint iiT=0; iiT<10; iiT++){ //internal iteration is needed to restore the flow 
+                lattice.collideAndStream();
+            }
+
+            steeringUpdate = false;
         }
         ////// Lattice Boltzmann iteration step.
 
