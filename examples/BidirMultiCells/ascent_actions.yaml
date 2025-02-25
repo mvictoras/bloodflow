@@ -1,0 +1,11 @@
+-
+  action: "add_triggers"
+  triggers:
+    t1:
+      params:
+        condition: "cycle() >= 20"
+        actions_file : "slices.yaml"
+    t2:
+      params:
+        condition: "cycle() >= 20"
+        actions_file : "trame.yaml"
