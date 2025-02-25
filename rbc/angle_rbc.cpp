@@ -416,7 +416,7 @@ void AngleRbc::compute(int eflag, int vflag)
   // std::cout << "***** nmolecule "<< nmolecule << std::endl;
   if (nmolecule_new > nmolecule)
   {// check if grow will copy the value of the array
-    std::cout<< " ----- nmolecule: " << nmolecule << " nmolecule_new: "<< nmolecule_new <<std::endl;
+//    std::cout<< " ----- nmolecule: " << nmolecule << " nmolecule_new: "<< nmolecule_new <<std::endl;
     double At_one = At[1]; // save a copy 
     // std::cout<<"---------- after AT_one = At[1]"<<nmolecule<<std::endl;
     double Vt_one = Vt[1];
